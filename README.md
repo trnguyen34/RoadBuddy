@@ -3,10 +3,10 @@
 ## Getting Started
 
 ### 1. Clone the repository
-'''bash
+```bash
 git clone git@github.com:trnguyen34/RoadBuddy.git
 cd RoadBuddy
-'''
+```
 
 ### 2. Create a python3.10 virtual environments and activate it
 ```bash
