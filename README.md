@@ -9,22 +9,22 @@ cd RoadBuddy
 '''
 
 ### 2. Create a python3.10 virtual environments and activate it
-'''bash
+```bash
 python3.10 -m venv .venv
 source .venv/bin/activate
-'''
+```
 
 ### 3.Install dependencies
-'''bash
+```bash
 pip3 install -r requirements.txt
-'''
+```
 
 ### 4. Create a environment variable
-'''bash
+```bash
 echo "SECRET_KEY=nasdbjwefudsvkjwefoui" > .env
-'''
+```
 
 ### 5. Run the application
-'''bash
+```bash
 python3 app.py
-'''
+```
