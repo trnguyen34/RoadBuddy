@@ -24,4 +24,53 @@ db = firestore.client()
 
 @app.route('/')
 def index():
-    return "Home"
+    if 'user' not in session:
+        return render_template('signup.html')
+    else:
+        return render_template('home.html')
+
+@app.route('/signup', methods=['GET', 'POST'])
+def signup():
+    if 'user' in session:
+        return redirect(url_for('index'))
+        
+    if request.method == 'POST':
+        name = request.form.get('name')
+        address = request.form.get('address')
+        email = request.form.get('email')
+        username = request.form.get('username')
+        password = request.form.get('password')
+        
+        if not email or not password:
+            return render_template('signup.html', error="Email and password are required")
+
+        try:
+            user = auth.create_user(
+                email=email,
+                password=password,
+                display_name=name
+            )
+
+            db.collection('users').document(user.uid).set({
+                'name': name,
+                'username': username,
+                'address': address,
+                'email': email,
+                'created_at': firestore.SERVER_TIMESTAMP
+            })
+
+            session['user'] = {
+                'uid': user.uid,
+                'email': user.email,
+                'display_name': user.display_name
+            }
+
+            return redirect(url_for('index'))
+
+        except Exception as e:
+            return render_template('signup.html', error=str(e))
+
+    return render_template('signup.html')
+
+if __name__ == "__main__":
+    app.run(host='0.0.0.0', port=8090, debug=True)
