@@ -22,12 +22,46 @@ cred = credentials.Certificate("firebase-config.json")
 firebase_admin.initialize_app(cred)
 db = firestore.client()
 
-@app.route('/')
+def auth_required(f):
+    @wraps(f)
+    def decorated_function(*args, **kwargs):
+        if 'user' not in session:
+            return redirect(url_for('login'))
+        else:
+            return f(*args, **kwargs)
+        
+    return decorated_function
+
+@app.route('/auth', methods=['POST'])
+def authorize():
+    token = request.headers.get('Authorization')
+    if not token or not token.startswith('Bearer '):
+        return "Unauthorized", 401
+
+    token = token[7:]  
+    
+    try:
+        decoded_token = auth.verify_id_token(token) # Validate token here
+        session['user'] = decoded_token # Add user to session
+        return redirect(url_for('home'))
+    
+    except:
+        return "Unauthorized", 401
+
+@app.route('/', methods=['GET', 'POST'])
 def index():
-    if 'user' not in session:
-        return render_template('signup.html')
+    if 'user' in session:
+        return redirect(url_for('home'))
     else:
-        return render_template('home.html')
+        return redirect(url_for('login'))
+    
+
+@app.route('/login', methods=['GET', 'POST'])
+def login():
+    if 'user' in session:
+        return redirect(url_for('index'))
+    else:
+        return render_template('login.html')
 
 @app.route('/signup', methods=['GET', 'POST'])
 def signup():
@@ -50,7 +84,7 @@ def signup():
                 password=password,
                 display_name=name
             )
-
+            
             db.collection('users').document(user.uid).set({
                 'name': name,
                 'username': username,
@@ -71,6 +105,19 @@ def signup():
             return render_template('signup.html', error=str(e))
 
     return render_template('signup.html')
+
+@app.route('/logout', methods=['POST'])
+def logout():
+    session.pop('user', None)
+    response = make_response(redirect(url_for('login')))
+    response.set_cookie('session', '', expires=0)
+    return response
+
+@app.route('/home')
+@auth_required
+def home():
+    user_name = session['user'].get('name', 'User')
+    return render_template('home.html', user_name=user_name)
 
 if __name__ == "__main__":
     app.run(host='0.0.0.0', port=8090, debug=True)
