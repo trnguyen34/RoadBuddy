@@ -7,6 +7,8 @@ from flask import (
 )
 import firebase_admin
 from firebase_admin import credentials, firestore, auth
+from firebase_admin.auth import InvalidIdTokenError
+from firebase_admin.exceptions import FirebaseError
 
 app = Flask(__name__)
 app.secret_key = os.getenv('SECRET_KEY')
@@ -28,8 +30,7 @@ def auth_required(f):
     def decorated_function(*args, **kwargs):
         if 'user' not in session:
             return redirect(url_for('login'))
-        else:
-            return f(*args, **kwargs)
+        return f(*args, **kwargs)
 
     return decorated_function
 
@@ -45,23 +46,21 @@ def authorize():
         decoded_token = auth.verify_id_token(token) # Validate token here
         session['user'] = decoded_token # Add user to session
         return redirect(url_for('home'))
-    except:
+    except InvalidIdTokenError:
         return "Unauthorized", 401
 
 @app.route('/', methods=['GET'])
 def index():
     if 'user' in session:
         return redirect(url_for('home'))
-    else:
-        return redirect(url_for('login'))
+    return redirect(url_for('login'))
 
 
 @app.route('/login', methods=['GET', 'POST'])
 def login():
     if 'user' in session:
         return redirect(url_for('index'))
-    else:
-        return render_template('login.html')
+    return render_template('login.html')
 
 @app.route('/signup', methods=['GET', 'POST'])
 def signup():
@@ -88,8 +87,7 @@ def signup():
                 'name': name,
                 'username': username,
                 'address': address,
-                'email': email,
-                'created_at': firestore.SERVER_TIMESTAMP
+                'email': email
             })
             session['user'] = {
                 'uid': user.uid,
@@ -97,8 +95,8 @@ def signup():
                 'display_name': user.display_name
             }
             return redirect(url_for('index'))
-        except Exception as e:
-            return render_template('signup.html', error=str(e))
+        except FirebaseError:
+            return render_template('signup.html', error="error")
 
     return render_template('signup.html')
 
