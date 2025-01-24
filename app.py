@@ -67,7 +67,7 @@ def authorize():
     token = token[7:]
 
     try:
-        decoded_token = auth.verify_id_token(token) # Validate token here
+        decoded_token = auth.verify_id_token(token) # Validate token
         session['user'] = decoded_token # Add user to session
         return redirect(url_for('home'))
     except InvalidIdTokenError:
