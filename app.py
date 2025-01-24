@@ -7,7 +7,7 @@ from flask import (
 )
 import firebase_admin
 from firebase_admin import credentials, firestore, auth
-from firebase_admin.auth import InvalidIdTokenError
+from firebase_admin.auth import InvalidIdTokenError, EmailAlreadyExistsError
 from firebase_admin.exceptions import FirebaseError
 
 app = Flask(__name__)
@@ -148,8 +148,10 @@ def signup():
                 'display_name': user.display_name
             }
             return redirect(url_for('index'))
+        except EmailAlreadyExistsError:
+            return render_template('signup.html', error="The email entered already exists.")
         except FirebaseError:
-            return render_template('signup.html', error="error")
+            return render_template('signup.html', error="Please try again.")
 
     return render_template('signup.html')
 
