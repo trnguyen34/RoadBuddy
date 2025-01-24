@@ -27,8 +27,13 @@ jobs:
     - name: Install dependencies
       run: |
         python -m pip install --upgrade pip
+        pip install pylint
         pip install -r requirements.txt
+
+    - name: Check Pylint Installation
+      run: |
+        python -m pylint --version
 
     - name: Analysing the code with pylint
       run: |
-        pylint $(git ls-files '*.py') --disable=C0114
+        python -m pylint $(git ls-files '*.py') --disable=C0114
