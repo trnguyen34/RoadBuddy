@@ -1,7 +1,7 @@
 {
   "expo": {
     "name": "RoadBuddy",
-    "slug": "RoadBuddy",
+    "slug": "roadbuddy",
     "version": "1.0.0",
     "orientation": "portrait",
     "icon": "./assets/images/icon.png",
@@ -9,7 +9,8 @@
     "userInterfaceStyle": "automatic",
     "newArchEnabled": true,
     "ios": {
-      "supportsTablet": true
+      "supportsTablet": true,
+      "bundleIdentifier": "com.frillia.roadbuddy"
     },
     "android": {
       "adaptiveIcon": {
@@ -36,6 +37,15 @@
     ],
     "experiments": {
       "typedRoutes": true
-    }
+    },
+    "extra": {
+      "router": {
+        "origin": false
+      },
+      "eas": {
+        "projectId": "a33f8a16-d195-4605-8ac1-b977bd5f64d6"
+      }
+    },
+    "owner": "frillia"
   }
 }
