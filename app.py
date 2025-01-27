@@ -13,7 +13,6 @@ from firebase_admin.exceptions import FirebaseError
 app = Flask(__name__)
 app.secret_key = os.getenv('SECRET_KEY')
 
-
 app.config['SESSION_COOKIE_SECURE'] = True
 app.config['SESSION_COOKIE_HTTPONLY'] = True
 app.config['PERMANENT_SESSION_LIFETIME'] = timedelta(days=1)
@@ -127,8 +126,17 @@ def signup():
         username = request.form.get('username')
         password = request.form.get('password')
 
+        # JX - This check actually isn't possible/needed, firebase ensures that all fields are non empty
+        """
         if not email or not password:
             return render_template('signup.html', error="Email and password are required")
+        """
+        # JX - Currently when the password length is < 6, it essentially refreshes the page
+        #      and wipes all the fields. While this does work it's kind of annoying for a
+        #      user so I'll try to make it just give a warning instead.
+        # TO-DO: make it so instead of refreshing the page it gives a warning on the box.
+        if len(password) < 6:
+            return render_template('signup.html', error="Password length must be greater than 6")
 
         try:
             user = auth.create_user(
