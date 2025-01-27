@@ -9,6 +9,17 @@ This is an [Expo](https://expo.dev) project created with [`create-expo-app`](htt
    ```bash
    npm install
    ```
+   also, sign up for an Expo account
+
+   for iOS: install Xcode via apple store and install command line tools (in settings -> locations)
+   then install:
+   ```bash
+   brew update
+   brew install watchman
+   ```
+   ESLint should already be part of the dev packages (installed via npm install)
+
+   
 
 2. Start the app
 
