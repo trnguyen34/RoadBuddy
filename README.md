@@ -30,7 +30,7 @@ echo "SECRET_KEY=nasdbjwefudsvkjwefoui" > .env
 python3 app.py
 ```
 
-
+---
 
 ## Posting a Ride
 
