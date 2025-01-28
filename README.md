@@ -1,6 +1,5 @@
 # RoadBuddy
 
-
 ## Getting Started
 
 ### 1. Clone the repository
@@ -30,7 +29,7 @@ echo "SECRET_KEY=nasdbjwefudsvkjwefoui" > .env
 python3 app.py
 ```
 
----
+___
 
 ## Posting a Ride
 
