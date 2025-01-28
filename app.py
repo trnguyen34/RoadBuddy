@@ -122,9 +122,7 @@ def signup():
 
     if request.method == 'POST':
         name = request.form.get('name')
-        address = request.form.get('address')
         email = request.form.get('email')
-        username = request.form.get('username')
         password = request.form.get('password')
 
         if not email or not password:
@@ -138,9 +136,9 @@ def signup():
             )
             db.collection('users').document(user.uid).set({
                 'name': name,
-                'username': username,
-                'address': address,
-                'email': email
+                'email': email,
+                'ridesPosted': [],
+                'ridesJoined': []
             })
             session['user'] = {
                 'uid': user.uid,
@@ -149,7 +147,7 @@ def signup():
             }
             return redirect(url_for('index'))
         except FirebaseError:
-            return render_template('signup.html', error="error")
+            return render_template('signup.html', error="Please try again")
 
     return render_template('signup.html')
 
