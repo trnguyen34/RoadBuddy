@@ -1,5 +1,6 @@
 # RoadBuddy
 
+
 ## Getting Started
 
 ### 1. Clone the repository
@@ -29,7 +30,9 @@ echo "SECRET_KEY=nasdbjwefudsvkjwefoui" > .env
 python3 app.py
 ```
 
-## **Posting a Ride**
+
+
+## Posting a Ride
 
 The `/post-ride` endpoint allows authenticated users to post rides to the carpooling application. This endpoint accepts both `GET` and `POST` requests.
 
