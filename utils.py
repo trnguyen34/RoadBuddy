@@ -1,4 +1,4 @@
-def is_duplicate_ride(db, ride_ids, start, destination, date, time):
+def is_duplicate_ride(db, ride_ids, ride_details):
     """
     Checks if a ride with the same owner, route, and time already exists.
     
@@ -21,10 +21,10 @@ def is_duplicate_ride(db, ride_ids, start, destination, date, time):
         ride_data = ride_doc.to_dict()
 
         if (
-            ride_data.get('from') == start and
-            ride_data.get('to') == destination and
-            ride_data.get('date') == date and
-            ride_data.get('departureTime') == time
+            ride_data.get('from') == ride_details['start'] and
+            ride_data.get('to') == ride_details['destination'] and
+            ride_data.get('date') == ride_details['date'] and
+            ride_data.get('departureTime') == ride_details['departureTime']
         ):
             return True
 

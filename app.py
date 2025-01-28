@@ -192,7 +192,7 @@ def post_ride():
         start = request.form.get('from')
         destination = request.form.get('to')
         date = request.form.get('date')
-        time = request.form.get('departure_time')
+        departure_time = request.form.get('departure_time')
         max_passengers = request.form.get('max_passengers')
         cost = request.form.get('cost')
 
@@ -210,7 +210,7 @@ def post_ride():
                 'from': start,
                 'to': destination,
                 'date': date,
-                'departureTime': time,
+                'departureTime': departure_time,
                 'maxPassengers': max_passengers,
                 'cost': cost,
                 'currentPassengers': [],
@@ -226,7 +226,14 @@ def post_ride():
             # Get existing rides or empty list
             rides_posted = user_data.get('ridesPosted', [])
 
-            if is_duplicate_ride(db, rides_posted, start, destination, date, time):
+            ride_details = {
+                "start": start,
+                "destination": destination,
+                "date": date,
+                "departureTime": departure_time
+            }
+
+            if is_duplicate_ride(db, rides_posted, ride_details):
                 return jsonify({"error": "Duplicate ride post detected"}), 400
 
             # Save the ride data to Firestore
