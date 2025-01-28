@@ -10,6 +10,8 @@ from firebase_admin import credentials, firestore, auth
 from firebase_admin.auth import InvalidIdTokenError
 from firebase_admin.exceptions import FirebaseError
 
+from utils import is_duplicate_ride
+
 app = Flask(__name__)
 app.secret_key = os.getenv('SECRET_KEY')
 
@@ -215,9 +217,6 @@ def post_ride():
                 'status': 'open'
             })
 
-            # Save the ride data to Firestore
-            ride_ref.set(ride_data)
-
             # Access the 'users' collection in Firestore with the owner_id
             user_ref = db.collection('users').document(owner_id)
             # Fecth the user's document data
@@ -226,6 +225,13 @@ def post_ride():
             user_data = user_doc.to_dict()
             # Get existing rides or empty list
             rides_posted = user_data.get('ridesPosted', [])
+
+            if is_duplicate_ride(db, rides_posted, start, destination, date, time):
+                return jsonify({"error": "Duplicate ride post detected"}), 400
+
+            # Save the ride data to Firestore
+            ride_ref.set(ride_data)
+
             # Append new ride ID and update Firestore
             rides_posted.append(ride_id)
             user_ref.update({'ridesPosted': rides_posted})
