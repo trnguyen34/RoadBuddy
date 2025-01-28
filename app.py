@@ -3,7 +3,7 @@ from functools import wraps
 import os
 from flask import (
     Flask, redirect, render_template, request,
-    make_response, session, url_for
+    make_response, session, url_for, jsonify
 )
 import firebase_admin
 from firebase_admin import credentials, firestore, auth
@@ -168,6 +168,73 @@ def logout():
     response = make_response(redirect(url_for('login')))
     response.set_cookie('session', '', expires=0)
     return response
+
+@app.route('/post-ride', methods=['GET', 'POST'])
+@auth_required
+def post_ride():
+    """
+    Handles ride posting by authenticated users.
+
+    For POST requests, gathers ride details from the form, and saves the
+    ride information to Firestore. Updates the user's profile with
+    the posted ride ID. For GET requests, renders the ride posting form.
+
+    Returns:
+        Response: JSON response with the ride details and a success message (status 201)
+        for successful POST requests, or renders the ride posting form (status 200).
+        On error, renders the form with an error message.
+    """
+    if request.method == 'POST':
+        owner_id = session['user'].get('uid')
+        owner_name = session['user'].get('name')
+        start = request.form.get('from')
+        destination = request.form.get('to')
+        date = request.form.get('date')
+        time = request.form.get('departure_time')
+        max_passengers = request.form.get('max_passengers')
+        cost = request.form.get('cost')
+
+        try:
+            # Generate new ride document
+            ride_ref = db.collection('rides').document() # Auto-generated ID
+            ride_id = ride_ref.id
+
+            max_passengers = int(max_passengers)
+            cost = float(cost)
+
+            ride_data = ({
+                'ownerID': owner_id,
+                'ownerName': owner_name,
+                'from': start,
+                'to': destination,
+                'date': date,
+                'departureTime': time,
+                'maxPassengers': max_passengers,
+                'cost': cost,
+                'currentPassengers': [],
+                'status': 'open'
+            })
+
+            # Save the ride data to Firestore
+            ride_ref.set(ride_data)
+
+            # Access the 'users' collection in Firestore with the owner_id
+            user_ref = db.collection('users').document(owner_id)
+            # Fecth the user's document data
+            user_doc = user_ref.get()
+            # Convert the Firestore document into a Python dictionary
+            user_data = user_doc.to_dict()
+            # Get existing rides or empty list
+            rides_posted = user_data.get('ridesPosted', [])
+            # Append new ride ID and update Firestore
+            rides_posted.append(ride_id)
+            user_ref.update({'ridesPosted': rides_posted})
+
+            return jsonify({"message": "Ride posted successfully", "ride": ride_data}), 201
+        except FirebaseError:
+            return render_template('ridePost.html', error="Please try again.")
+
+    return render_template('ridePost.html')
 
 @app.route('/home')
 @auth_required
