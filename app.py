@@ -189,30 +189,30 @@ def post_ride():
     if request.method == 'POST':
         owner_id = session['user'].get('uid')
         owner_name = session['user'].get('name')
-        start = request.form.get('from')
-        destination = request.form.get('to')
-        date = request.form.get('date')
-        departure_time = request.form.get('departure_time')
-        max_passengers = request.form.get('max_passengers')
-        cost = request.form.get('cost')
+
+        ride_details = {
+            "start": request.form.get('from'),
+            "destination": request.form.get('to'),
+            "date": request.form.get('date'),
+            "departureTime": request.form.get('departure_time'),
+            "maxPassengers": int(request.form.get('max_passengers')),
+            "cost": float(request.form.get('cost'))
+        }
 
         try:
             # Generate new ride document
             ride_ref = db.collection('rides').document() # Auto-generated ID
             ride_id = ride_ref.id
 
-            max_passengers = int(max_passengers)
-            cost = float(cost)
-
             ride_data = ({
                 'ownerID': owner_id,
                 'ownerName': owner_name,
-                'from': start,
-                'to': destination,
-                'date': date,
-                'departureTime': departure_time,
-                'maxPassengers': max_passengers,
-                'cost': cost,
+                'from': ride_details['start'],
+                'to': ride_details['destination'],
+                'date': ride_details['date'],
+                'departureTime': ride_details['departureTime'],
+                'maxPassengers': ride_details['maxPassengers'],
+                'cost': ride_details['cost'],
                 'currentPassengers': [],
                 'status': 'open'
             })
@@ -225,13 +225,6 @@ def post_ride():
             user_data = user_doc.to_dict()
             # Get existing rides or empty list
             rides_posted = user_data.get('ridesPosted', [])
-
-            ride_details = {
-                "start": start,
-                "destination": destination,
-                "date": date,
-                "departureTime": departure_time
-            }
 
             if is_duplicate_ride(db, rides_posted, ride_details):
                 return jsonify({"error": "Duplicate ride post detected"}), 400
