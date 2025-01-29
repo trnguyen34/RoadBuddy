@@ -191,8 +191,8 @@ def post_ride():
         owner_name = session['user'].get('name')
 
         ride_details = {
-            "start": request.form.get('from'),
-            "destination": request.form.get('to'),
+            "from": request.form.get('from'),
+            "to": request.form.get('to'),
             "date": request.form.get('date'),
             "departureTime": request.form.get('departure_time'),
             "maxPassengers": int(request.form.get('max_passengers')),
@@ -207,8 +207,8 @@ def post_ride():
             ride_data = ({
                 'ownerID': owner_id,
                 'ownerName': owner_name,
-                'from': ride_details['start'],
-                'to': ride_details['destination'],
+                'from': ride_details['from'],
+                'to': ride_details['to'],
                 'date': ride_details['date'],
                 'departureTime': ride_details['departureTime'],
                 'maxPassengers': ride_details['maxPassengers'],
