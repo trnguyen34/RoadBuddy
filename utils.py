@@ -3,11 +3,9 @@ def is_duplicate_ride(db, ride_ids, ride_details):
     Checks if a ride with the same owner, route, and time already exists.
     
     Args:
+        db: Firestore database
         ride_ids: A list of rideIDs post by the owner.
-        start (str): Starting location.
-        destination (str): Destination.
-        date (str): Ride date.
-        time (str): Departure time.
+        ride_details: A list of fields to check for duplicates
     
     Returns:
         bool: True if a duplicate ride exists, False otherwise.
