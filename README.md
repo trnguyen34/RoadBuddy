@@ -111,7 +111,9 @@ The `/post-ride` endpoint allows authenticated users to post rides to the carpoo
    The user's document is updated with the `ridesPosted` field:
    ```json
    {
+     "email": "bananaslug@gmail.com",
      "name": "Banana Slug",
+     "ridesJoined": [],
      "ridesPosted": ["rideID123"]
    }
    ```
