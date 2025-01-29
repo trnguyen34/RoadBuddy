@@ -204,6 +204,18 @@ def post_ride():
             ride_ref = db.collection('rides').document() # Auto-generated ID
             ride_id = ride_ref.id
 
+            # Access the 'users' collection in Firestore with the owner_id
+            user_ref = db.collection('users').document(owner_id)
+            # Fecth the user's document data
+            user_doc = user_ref.get()
+            # Convert the Firestore document into a Python dictionary
+            user_data = user_doc.to_dict()
+            # Get existing rides or empty list
+            rides_posted = user_data.get('ridesPosted', [])
+
+            if is_duplicate_ride(db, rides_posted, ride_details):
+                return jsonify({"error": "Duplicate ride post detected"}), 400
+
             ride_data = ({
                 'ownerID': owner_id,
                 'ownerName': owner_name,
@@ -216,18 +228,6 @@ def post_ride():
                 'currentPassengers': [],
                 'status': 'open'
             })
-
-            # Access the 'users' collection in Firestore with the owner_id
-            user_ref = db.collection('users').document(owner_id)
-            # Fecth the user's document data
-            user_doc = user_ref.get()
-            # Convert the Firestore document into a Python dictionary
-            user_data = user_doc.to_dict()
-            # Get existing rides or empty list
-            rides_posted = user_data.get('ridesPosted', [])
-
-            if is_duplicate_ride(db, rides_posted, ride_details):
-                return jsonify({"error": "Duplicate ride post detected"}), 400
 
             # Save the ride data to Firestore
             ride_ref.set(ride_data)
