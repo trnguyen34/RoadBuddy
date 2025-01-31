@@ -3,7 +3,7 @@ from functools import wraps
 import os
 from flask import (
     Flask, redirect, render_template, request,
-    make_response, session, url_for
+    make_response, session, url_for, jsonify
 )
 import firebase_admin
 from firebase_admin import credentials, firestore, auth
@@ -151,7 +151,6 @@ def signup():
         except FirebaseError:
             return render_template('signup.html', error="Please try again.")
 
-
     return render_template('signup.html')
 
 @app.route('/logout', methods=['POST'])
@@ -169,6 +168,45 @@ def logout():
     response = make_response(redirect(url_for('login')))
     response.set_cookie('session', '', expires=0)
     return response
+
+@app.route('/add-car', methods=['GET', 'POST'])
+@auth_required
+def add_car():
+    """_summary_
+
+    Returns:
+
+    """
+    if request.method == 'POST':
+        is_primary = request.form.get('isPrimary') == "true"
+        car_details = {
+            'make': request.form.get('make'),
+            'model': request.form.get('model'),
+            'licensePlate': request.form.get('licensePlate'),
+            'vin': request.form.get('vin'),
+            'year': int(request.form.get('year')),
+            'color': request.form.get('color'),
+            'isPrimary': is_primary
+        }
+
+        try:
+            user_id = session['user'].get('uid')
+            user_ref = db.collection('users').document(user_id)
+            user_ref.collection('cars').document().set({
+                'make': car_details['make'],
+                'model': car_details['model'],
+                'licensePlate': car_details['licensePlate'],
+                'vin': car_details['vin'],
+                'year': car_details['year'],
+                'color': car_details['color'],
+                'isPrimary': car_details['isPrimary']
+            })
+
+            return jsonify({"message": "Car added successfully", "car": car_details}), 201
+        except FirebaseError:
+            return render_template('addCar.html', error="Please try again.")
+
+    return render_template('addCar.html')
 
 @app.route('/home')
 @auth_required
