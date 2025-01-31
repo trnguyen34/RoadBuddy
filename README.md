@@ -32,7 +32,7 @@ python3 app.py
 ## Adding a Car to User Profile
 The `/add-car` endpoint allows authenticated users to add a car to their Firestore profile under the `cars` subcollection.
 
-## **Endpoint**
+### **Endpoint**
 - **URL**: `/add-car`
 - **Methods**: `GET`, `POST`
 - **Authentication**: Required
