@@ -62,7 +62,6 @@ The `/post-ride` endpoint allows authenticated users to post rides to the carpoo
   | `carModel`       | String  | The car model that the owner will use.|
   | `licensePlate`   | String  | The license plate of the car.         |
   | `carVIN`         | String  | Vehicle identification number.        |
----
 
 ### **Response Details**
 
