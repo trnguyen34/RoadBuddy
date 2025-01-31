@@ -10,9 +10,10 @@ from firebase_admin import credentials, firestore, auth
 from firebase_admin.auth import InvalidIdTokenError, EmailAlreadyExistsError
 from firebase_admin.exceptions import FirebaseError
 
+from utils import is_duplicate_car
+
 app = Flask(__name__)
 app.secret_key = os.getenv('SECRET_KEY')
-
 
 app.config['SESSION_COOKIE_SECURE'] = True
 app.config['SESSION_COOKIE_HTTPONLY'] = True
@@ -194,6 +195,9 @@ def add_car():
             user_id = session['user'].get('uid')
             user_ref = db.collection('users').document(user_id)
             cars_ref = user_ref.collection('cars')
+
+            if is_duplicate_car(db, user_id, car_details):
+                return jsonify({"error": "Duplicate car detected"}), 400
 
             # If new car is marled as primary, unset any existing primary car
             if is_primary:
