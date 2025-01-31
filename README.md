@@ -1,7 +1,6 @@
 # RoadBuddy
 
 ## Getting Started
-___
 
 ### 1. Clone the repository
 ```bash
@@ -31,7 +30,6 @@ python3 app.py
 ```
 
 ## Adding a Car to User Profile
-___
 The `/add-car` endpoint allows authenticated users to add a car to their Firestore profile under the `cars` subcollection.
 
 ## **Endpoint**
