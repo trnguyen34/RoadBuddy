@@ -226,7 +226,10 @@ def post_ride():
                 'maxPassengers': ride_details['maxPassengers'],
                 'cost': ride_details['cost'],
                 'currentPassengers': [],
-                'status': 'open'
+                'status': 'open',
+                'carModel': '',
+                'licensePlate': '',
+                'carVIN': ''
             })
 
             # Save the ride data to Firestore
