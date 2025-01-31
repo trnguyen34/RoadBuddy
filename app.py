@@ -192,15 +192,15 @@ def add_car():
         try:
             user_id = session['user'].get('uid')
             user_ref = db.collection('users').document(user_id)
-            user_ref.collection('cars').document().set({
-                'make': car_details['make'],
-                'model': car_details['model'],
-                'licensePlate': car_details['licensePlate'],
-                'vin': car_details['vin'],
-                'year': car_details['year'],
-                'color': car_details['color'],
-                'isPrimary': car_details['isPrimary']
-            })
+            cars_ref = user_ref.collection('cars')
+
+            # If new car is marled as primary, unset any existing primary car
+            if is_primary:
+                existing_primary_cars = cars_ref.where('isPrimary', '==', True).stream()
+                for car in existing_primary_cars:
+                    cars_ref.document(car.id).update({'isPrimary': False})
+
+            cars_ref.document().set(car_details)
 
             return jsonify({"message": "Car added successfully", "car": car_details}), 201
         except FirebaseError:
@@ -220,7 +220,7 @@ def home():
     Returns:
         Response: The rendered home page for the authenticated user.
     """
-    user_name = session['user'].get('name', 'User')
+    user_name = session['user'].get('name', 'Guest')
     return render_template('home.html', user_name=user_name)
 
 if __name__ == "__main__":
