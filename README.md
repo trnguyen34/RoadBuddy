@@ -95,8 +95,8 @@ Each user has a **`cars` subcollection** containing individual **car documents**
 Firestore Root
 │── users
 │   ├── {userID1}
-│   │   ├── name: “John Doe”
-│   │   ├── email: “john@example.com”
+│   │   ├── name: “Banana Slug”
+│   │   ├── email: “bananaslug@gmail.com”
 │   │   ├── ridesPosted: []
 │   │   ├── ridesJoined: []
 │   │   ├── cars (Subcollection)
