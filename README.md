@@ -31,6 +31,7 @@ python3 app.py
 
 ___
 
+
 ## Posting a Ride
 
 The `/post-ride` endpoint allows authenticated users to post rides to the carpooling application. This endpoint accepts both `GET` and `POST` requests.
@@ -39,8 +40,6 @@ The `/post-ride` endpoint allows authenticated users to post rides to the carpoo
 - **URL**: `/post-ride`
 - **Methods**: `GET`, `POST`
 - **Authentication**: Required
-
----
 
 ### **Request Details**
 
@@ -54,13 +53,15 @@ The `/post-ride` endpoint allows authenticated users to post rides to the carpoo
 - **Request Body** (Form Data):
   | Field            | Type    | Description                          |
   |------------------|---------|--------------------------------------|
-  | `from`           | String  | The starting location of the ride.  |
-  | `to`             | String  | The destination of the ride.        |
-  | `date`           | Date    | The date of the ride.               |
-  | `departure_time` | Time    | The departure time of the ride.     |
-  | `max_passengers` | Integer | Maximum number of passengers allowed.|
-  | `cost`           | Float   | Cost per passenger.                 |
-
+  | `from`           | String  | The starting location of the ride.    |
+  | `to`             | String  | The destination of the ride.          |
+  | `date`           | Date    | The date of the ride.                 |
+  | `departure_time` | Time    | The departure time of the ride.       |
+  | `max_passengers` | Integer | Maximum number of passengers allowed. |
+  | `cost`           | Float   | Cost per passenger.                   |
+  | `carModel`       | String  | The car model that the owner will use.|
+  | `licensePlate`   | String  | The license plate of the car.         |
+  | `carVIN`         | String  | Vehicle identification number.        |
 ---
 
 ### **Response Details**
@@ -85,8 +86,6 @@ The `/post-ride` endpoint allows authenticated users to post rides to the carpoo
     }
   }
   ```
-
-  ---
 
 ### **Firestore Structure**
 
