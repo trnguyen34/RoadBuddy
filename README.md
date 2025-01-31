@@ -61,6 +61,10 @@ Each user has a **`cars` subcollection** containing individual **car documents**
 | `color`       | String | The color of the car                                 |
 | `isPrimary`   | Boolean | Whether the car is the **primary** car for the user |
 
+### **Handling Primary Car Updates
+- if the user adds a ***new primary car***, the system automatically updates the previous primary car to `isPrimary: false`.
+- Ensures only one car can be primary at a time.
+
 ### **Response Details**
 
 #### **Successful POST Request**:
