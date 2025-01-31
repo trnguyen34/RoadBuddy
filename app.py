@@ -172,10 +172,11 @@ def logout():
 @app.route('/add-car', methods=['GET', 'POST'])
 @auth_required
 def add_car():
-    """_summary_
+    """
+    Handles adding a car to the user's profile.
 
     Returns:
-
+        JSON response if successful, or renders the addCar form.
     """
     if request.method == 'POST':
         is_primary = request.form.get('isPrimary') == "true"
