@@ -44,7 +44,7 @@
 <body>
   <div class="form-container">
     <h2>Post a Ride</h2>
-    <form action="/post-ride" method="POST">
+    <form action="/post-ride" method="POST" id="postRideForm" onsubmit="return validateForm()">
       <label for="from">From</label>
       <input type="text" id="from" name="from" placeholder="Enter starting location" required>
 
@@ -57,6 +57,7 @@
       <label for="departure_time">Departure Time</label>
       <input type="time" id="departure_time" name="departure_time" required>
 
+      <!-- this can be e for some reason? like e the number?-->
       <label for="max_passengers">Maximum Passengers</label>
       <input type="number" id="max_passengers" name="max_passengers" placeholder="Enter max passengers" min="1" required>
 
@@ -66,5 +67,32 @@
       <button type="submit">Post Ride</button>
     </form>
   </div>
+
+  <script>
+    function validateForm() {
+      // Get the values from the form
+      const from = document.getElementById('from').value;
+      const to = document.getElementById('to').value;
+      const date = document.getElementById('date').value;
+      const departureTime = document.getElementById('departure_time').value;
+      const maxPassengers = document.getElementById('max_passengers').value;
+      const cost = document.getElementById('cost').value;
+
+      // Check for valid number of passengers
+      if (maxPassengers < 1 || isNaN(maxPassengers)) {
+        alert("Maximum passengers must be a valid number greater than 0.");
+        return false;
+      }
+
+      // Check for valid cost value
+      if (cost < 0 || isNaN(cost)) {
+        alert("Cost must be a valid number greater than or equal to 0.");
+        return false;
+      }
+
+      // Submit form
+      return true;
+    }
+  </script>
 </body>
 </html>
