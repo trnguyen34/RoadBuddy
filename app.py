@@ -126,15 +126,9 @@ def signup():
         username = request.form.get('username')
         password = request.form.get('password')
 
-        # JX - This check actually isn't possible/needed, firebase ensures that all fields are non empty
-        """
-        if not email or not password:
-            return render_template('signup.html', error="Email and password are required")
-        """
         # JX - Currently when the password length is < 6, it essentially refreshes the page
         #      and wipes all the fields. While this does work it's kind of annoying for a
         #      user so I'll try to make it just give a warning instead.
-        # TO-DO: make it so instead of refreshing the page it gives a warning on the box.
         if len(password) < 6:
             return render_template('signup.html', error="Password length must be greater than 6")
 
