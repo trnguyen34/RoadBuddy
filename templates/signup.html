@@ -50,16 +50,27 @@
             width: 100%;
             padding: 10px;
             background-color: #007bff;
-            border: none;
+            border: 1px solid #ccc;
+            border-radius: 5px;
             color: white;
             font-size: 16px;
             cursor: pointer;
-            border-radius: 4px;
+            box-sizing: border-box; 
         }
-        .submit-btn:hover {
+        .submit-btn:hover, .back-btn:hover{
             background-color: #0056b3;
         }
-        input, select, button {
+        .back-btn{
+            padding: 6px;
+            background-color: #007bff;
+            border: 1px solid #ccc;
+            border-radius: 5px;
+            color: white;
+            font-size: 16px;
+            cursor: pointer;
+            box-sizing: border-box; 
+        }
+        input, select {
             width: 100%;
             padding: 10px;
             border: 1px solid #ccc;
@@ -70,6 +81,9 @@
 </head>
 <body>
     <div class="signup-container">
+        <a href="login.html">
+            <button class="back-btn">&lt</button>
+        </a>
         <h2>Signup</h2>
         <!-- Display error if any -->
         {% if error %}
