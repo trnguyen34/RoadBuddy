@@ -28,7 +28,7 @@ jobs:
       run: |
         python -m pip install --upgrade pip
         pip install pylint
-        pip install -r requirements.txt
+        pip install -r backend/requirements.txt
 
     - name: Check Pylint Installation
       run: |
