@@ -3,16 +3,17 @@ from functools import wraps
 import os
 from flask import (
     Flask, redirect, render_template, request,
-    make_response, session, url_for
+    make_response, session, url_for, jsonify
 )
 import firebase_admin
 from firebase_admin import credentials, firestore, auth
 from firebase_admin.auth import InvalidIdTokenError, EmailAlreadyExistsError
 from firebase_admin.exceptions import FirebaseError
 
+from utils import is_duplicate_car
+
 app = Flask(__name__)
 app.secret_key = os.getenv('SECRET_KEY')
-
 
 app.config['SESSION_COOKIE_SECURE'] = True
 app.config['SESSION_COOKIE_HTTPONLY'] = True
@@ -151,7 +152,6 @@ def signup():
         except FirebaseError:
             return render_template('signup.html', error="Please try again.")
 
-
     return render_template('signup.html')
 
 @app.route('/logout', methods=['POST'])
@@ -170,6 +170,49 @@ def logout():
     response.set_cookie('session', '', expires=0)
     return response
 
+@app.route('/add-car', methods=['GET', 'POST'])
+@auth_required
+def add_car():
+    """
+    Handles adding a car to the user's profile.
+
+    Returns:
+        JSON response if successful, or renders the addCar form.
+    """
+    if request.method == 'POST':
+        is_primary = request.form.get('isPrimary') == "true"
+        car_details = {
+            'make': request.form.get('make'),
+            'model': request.form.get('model'),
+            'licensePlate': request.form.get('licensePlate'),
+            'vin': request.form.get('vin'),
+            'year': int(request.form.get('year')),
+            'color': request.form.get('color'),
+            'isPrimary': is_primary
+        }
+
+        try:
+            user_id = session['user'].get('uid')
+            user_ref = db.collection('users').document(user_id)
+            cars_ref = user_ref.collection('cars')
+
+            if is_duplicate_car(db, user_id, car_details):
+                return jsonify({"error": "Duplicate car detected"}), 400
+
+            # If new car is marled as primary, unset any existing primary car
+            if is_primary:
+                existing_primary_cars = cars_ref.where('isPrimary', '==', True).stream()
+                for car in existing_primary_cars:
+                    cars_ref.document(car.id).update({'isPrimary': False})
+
+            cars_ref.document().set(car_details)
+
+            return jsonify({"message": "Car added successfully", "car": car_details}), 201
+        except FirebaseError:
+            return render_template('addCar.html', error="Please try again.")
+
+    return render_template('addCar.html')
+
 @app.route('/home')
 @auth_required
 def home():
@@ -182,7 +225,7 @@ def home():
     Returns:
         Response: The rendered home page for the authenticated user.
     """
-    user_name = session['user'].get('name', 'User')
+    user_name = session['user'].get('name', 'Guest')
     return render_template('home.html', user_name=user_name)
 
 if __name__ == "__main__":

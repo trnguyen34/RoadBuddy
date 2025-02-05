@@ -1,0 +1,129 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Post a Ride</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      margin: 20px;
+    }
+    .form-container {
+      max-width: 400px;
+      margin: 0 auto;
+      padding: 20px;
+      border: 1px solid #ccc;
+      border-radius: 10px;
+      box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+    }
+    input, select, button {
+      width: 100%;
+      padding: 10px;
+      margin-bottom: 15px; 
+      border: 1px solid #ccc;
+      border-radius: 5px;
+      box-sizing: border-box; 
+    }
+    label {
+      display: block;
+      margin-bottom: 5px;
+      font-weight: bold;
+    }
+    button {
+      background-color: #007BFF;
+      color: #fff;
+      font-size: 16px;
+      cursor: pointer;
+    }
+    button:hover {
+      background-color: #0056b3;
+    }
+    .uppercase-input {
+      text-transform: uppercase;
+    }
+    input.uppercase-input::placeholder {
+      text-transform: none; /* Keeps placeholder in original case */
+    }/* Hide default checkbox */
+    .toggle-checkbox {
+      display: none;
+  }
+
+  .toggle-label {
+      display: flex;
+      align-items: center;
+      cursor: pointer;
+      font-size: 16px;
+      font-weight: 600;
+      color: #333;
+      gap: 10px;
+  }
+
+  .toggle-switch {
+      position: relative;
+      width: 50px;
+      height: 25px;
+      background-color: #ccc;
+      border-radius: 25px;
+      transition: background 0.3s;
+  }
+
+  .toggle-switch::before {
+      content: "";
+      position: absolute;
+      width: 20px;
+      height: 20px;
+      background: white;
+      border-radius: 50%;
+      top: 50%;
+      left: 5px;
+      transform: translateY(-50%);
+      transition: left 0.3s ease;
+      box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
+  }
+
+  .toggle-checkbox:checked + .toggle-switch {
+      background-color: #4CAF50;
+  }
+
+  .toggle-checkbox:checked + .toggle-switch::before {
+      left: 25px;
+  }
+  </style>
+  <script>
+    document.getElementById("year").max = new Date().getFullYear();
+  </script>
+</head>
+<body>
+  <div class="form-container">
+    <h2>Add a Car</h2>
+    <form action="/add-car" method="POST">
+      <label for="to">Make</label>
+      <input type="text" name="make" placeholder="Make" required>
+
+      <label for="to">Model</label>
+      <input type="text" name="model" placeholder="Model" required>
+
+      <label for="to">License Plate</label>
+      <input type="text" name="licensePlate" class="uppercase-input" placeholder="License Plate" required>
+
+      <label for="to">Vehicle Identification Number (VIN)</label>
+      <input type="text" name="vin" class="uppercase-input" placeholder="Vehicle Identification Number" required>
+
+      <label for="to">Year</label>
+      <input type="number" name="year" min="1950" max="" step="1" placeholder="YYYY" required>
+
+      <label for="to">Color</label>
+      <input type="text" name="color" placeholder="Car Color" required>
+
+      <label class="toggle-label">
+        Primary Car
+        <input type="checkbox" id="isPrimary" name="isPrimary" class="toggle-checkbox" value="true">
+        <div class="toggle-switch"></div>
+      </label>
+
+      <button type="submit">Add Car</button>
+    </form>
+  </div>
+</body>
+</html>
