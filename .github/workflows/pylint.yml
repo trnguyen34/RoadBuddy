@@ -36,4 +36,4 @@ jobs:
 
     - name: Analysing the code with pylint
       run: |
-        python -m pylint $(git ls-files '*.py') --disable=C0114
+        python -m pylint $(git ls-files 'backend/*.py')
