@@ -1,6 +1,6 @@
 # RoadBuddy
 
-## Getting Started
+## Getting Started - Backend
 
 ### 1. Clone the repository
 ```bash
@@ -12,6 +12,11 @@ cd RoadBuddy
 ```bash
 python3.10 -m venv .venv
 source .venv/bin/activate
+```
+
+### 2a. The venv can be deactivated by running deactivate:
+```bash
+deactivate
 ```
 
 ### 3.Install dependencies
