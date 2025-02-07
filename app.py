@@ -188,7 +188,7 @@ def post_ride_request():
         owner_id = session['user'].get('uid')
         owner_name = session['user'].get('name')
 
-        ride_details = {
+        ride_request_details = {
             "from": request.form.get('from'),
             "to": request.form.get('to'),
             "date": request.form.get('date'),
@@ -197,9 +197,9 @@ def post_ride_request():
         }
 
         try:
-            # Generate new ride document
+            # Generate new ride request document
             ride_ref = db.collection('ride_requests').document()  # Auto-generated ID
-            ride_id = ride_ref.id
+            ride_request_id = ride_ref.id
 
             # Access the 'users' collection in Firestore with the owner_id
             user_ref = db.collection('users').document(owner_id)
@@ -207,17 +207,17 @@ def post_ride_request():
             user_doc = user_ref.get()
             # Convert the Firestore document into a Python dictionary
             user_data = user_doc.to_dict()
-            # Get existing rides or empty list
+            # Get existing ride request or empty list
             rides_request_posted = user_data.get('ridesPosted', [])
 
             ride_data = {
                 'ownerID': owner_id,
                 'ownerName': owner_name,
-                'from': ride_details['from'],
-                'to': ride_details['to'],
-                'date': ride_details['date'],
-                'departureTime': ride_details['departureTime'],
-                'numPassengers': ride_details['numPassengers'],
+                'from': ride_request_details['from'],
+                'to': ride_request_details['to'],
+                'date': ride_request_details['date'],
+                'departureTime': ride_request_details['departureTime'],
+                'numPassengers': ride_request_details['numPassengers'],
                 'status': 'open',
             }
 
@@ -225,7 +225,7 @@ def post_ride_request():
             ride_ref.set(ride_data)
 
             # Append new ride ID and update Firestore
-            rides_request_posted.append(ride_id)
+            rides_request_posted.append(ride_request_id)
             user_ref.update({'ridesPosted': rides_request_posted})
 
             return jsonify({"message": "Request posted successfully", "ride": ride_data}), 201
