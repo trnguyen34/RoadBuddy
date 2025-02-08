@@ -9,10 +9,12 @@ import firebase_admin
 from firebase_admin import credentials, firestore, auth
 from firebase_admin.auth import InvalidIdTokenError, EmailAlreadyExistsError
 from firebase_admin.exceptions import FirebaseError
+from flask_cors import CORS
 
 from utils import is_duplicate_car
 
 app = Flask(__name__)
+CORS(app)
 app.secret_key = os.getenv('SECRET_KEY')
 
 app.config['SESSION_COOKIE_SECURE'] = True
@@ -84,9 +86,10 @@ def index():
         Response: A redirect to the home page for authenticated users, or the 
         login page for unauthenticated users.
     """
-    if 'user' in session:
-        return redirect(url_for('home'))
-    return redirect(url_for('login'))
+    # if 'user' in session:
+    #     return redirect(url_for('home'))
+    # return redirect(url_for('login'))
+    return jsonify({"message": "Hello, there!"}), 200
 
 
 @app.route('/login', methods=['GET', 'POST'])
