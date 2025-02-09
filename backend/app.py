@@ -89,7 +89,7 @@ def index():
     # if 'user' in session:
     #     return redirect(url_for('home'))
     # return redirect(url_for('login'))
-    return jsonify({"message": "Hello, there!"}), 200
+    return jsonify({"message": "Welcome to RoadBuddy!"}), 200
 
 
 @app.route('/login', methods=['GET', 'POST'])

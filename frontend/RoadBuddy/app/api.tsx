@@ -1,7 +1,7 @@
 import axios from "axios";
 
 // 🔹 Change 'localhost' to your computer's IP if using a real device
-const BASE_URL = "http://169.233.201.146:8090"; // Replace with your Flask server IP
+const BASE_URL = "http://127.0.0.1:8090"; // Replace with your Flask server IP
 
 export const fetchIndex = async () => {
   try {
