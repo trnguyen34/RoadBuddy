@@ -7,7 +7,7 @@ const App = () => {
 
   useEffect(() => {
     (async () => {
-      const asset = Asset.fromModule(require('../assets/templates/home.html'));
+      const asset = Asset.fromModule(require('../assets/templates/login.html'));
       await asset.downloadAsync();  // This ensures the asset is downloaded locally
       setHtmlUri(asset.localUri || null);
     })();
