@@ -1,15 +1,20 @@
-import React, { useState, useEffect } from 'react';
+import * as React from 'react';
 import { NavigationContainer } from '@react-navigation/native';
-import { createStackNavigator } from '@react-navigation/stack';
+import { createNativeStackNavigator } from '@react-navigation/native-stack';
+import LoginScreen from './login';
+import HomeScreen from './home';
+import SignupScreen from './signup';
+
+const Stack = createNativeStackNavigator();
 
 const App = () => {
     return (
-      <NavigationContainer>
+      
         <Stack.Navigator initialRouteName="Login">
           <Stack.Screen name="Login" component={LoginScreen} />
           <Stack.Screen name="Home" component={HomeScreen} />
+          <Stack.Screen name="Signup" component={SignupScreen} />
         </Stack.Navigator>
-      </NavigationContainer>
     );
   };
 export default App;

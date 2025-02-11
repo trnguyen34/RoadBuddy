@@ -1,10 +1,31 @@
 import React, { useState, useEffect } from 'react';
 import { WebView } from 'react-native-webview';
 import { Asset } from 'expo-asset';
+import { NativeStackNavigationProp } from '@react-navigation/native-stack';
+import {
+    createStaticNavigation,
+    ParamListBase,
+    useNavigation,
+  } from '@react-navigation/native';
 
-const LoginScreen = ({ navigation }) => {
+function LoginScreen() {
     const [htmlUri, setHtmlUri] = useState<string | null>('');
-  
+    const navigation = useNavigation<NativeStackNavigationProp<ParamListBase>>();
+    function handleMessage(event: { nativeEvent: { data: any; }; }){
+            const message = event.nativeEvent.data;
+            switch (message) {
+                case 'navigateHome':
+                  // Handle navigation or other actions here
+                  navigation.navigate('Home');
+                  break;
+                case 'navigateSignUp':
+                    // Handle navigation or other actions here
+                    navigation.navigate('Signup');
+                    break;
+                default:
+                  console.log('Received message:', message);
+              }
+        }
     useEffect(() => {
       (async () => {
         const asset = Asset.fromModule(require('../assets/templates/login.html'));
@@ -17,6 +38,7 @@ const LoginScreen = ({ navigation }) => {
       <WebView
         originWhitelist={['*']}
         source={{ uri: htmlUri }}
+        onMessage = {handleMessage}
       />
     ) : null;
   };
