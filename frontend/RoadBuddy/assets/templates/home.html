@@ -47,7 +47,19 @@
         <h1>Welcome</h1>
         <p class="username">{{ user_name }}</p>
         <form action="/logout" method="POST">
+            <script>
+                function sendMessage(action) {
+                  // Post message to React Native
+                  window.ReactNativeWebView.postMessage(action);
+                }
+              </script>
             <button type="submit" class="logout-btn">Logout</button>
+            <script>
+  function sendMessage(action) {
+    // Post message to React Native
+    window.ReactNativeWebView.postMessage(action);
+  }
+</script>
         </form>
     </div>
 </body>
