@@ -15,11 +15,9 @@ function LoginScreen() {
             const message = event.nativeEvent.data;
             switch (message) {
                 case 'navigateHome':
-                  // Handle navigation or other actions here
                   navigation.navigate('Home');
                   break;
                 case 'navigateSignUp':
-                    // Handle navigation or other actions here
                     navigation.navigate('Signup');
                     break;
                 default:
@@ -29,7 +27,7 @@ function LoginScreen() {
     useEffect(() => {
       (async () => {
         const asset = Asset.fromModule(require('../assets/templates/login.html'));
-        await asset.downloadAsync();  // This ensures the asset is downloaded locally
+        await asset.downloadAsync(); 
         setHtmlUri(asset.localUri || null);
       })();
     }, []);
