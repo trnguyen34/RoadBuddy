@@ -11,6 +11,7 @@ from firebase_admin.auth import InvalidIdTokenError, EmailAlreadyExistsError
 from firebase_admin.exceptions import FirebaseError
 
 from utils import is_duplicate_car
+from utils import is_duplicate_ride
 
 app = Flask(__name__)
 app.secret_key = os.getenv('SECRET_KEY')
@@ -212,6 +213,80 @@ def add_car():
             return render_template('addCar.html', error="Please try again.")
 
     return render_template('addCar.html')
+
+@app.route('/post-ride', methods=['GET', 'POST'])
+@auth_required
+def post_ride():
+    """
+    Handles ride posting by authenticated users.
+
+    For POST requests, gathers ride details from the form, and saves the
+    ride information to Firestore. Updates the user's profile with
+    the posted ride ID. For GET requests, renders the ride posting form.
+
+    Returns:
+        Response: JSON response with the ride details and a success message (status 201)
+        for successful POST requests, or renders the ride posting form (status 200).
+        On error, renders the form with an error message.
+    """
+    if request.method == 'POST':
+        owner_id = session['user'].get('uid')
+        owner_name = session['user'].get('name')
+
+        ride_details = {
+            "from": request.form.get('from'),
+            "to": request.form.get('to'),
+            "date": request.form.get('date'),
+            "departureTime": request.form.get('departure_time'),
+            "maxPassengers": int(request.form.get('max_passengers')),
+            "cost": float(request.form.get('cost'))
+        }
+
+        try:
+            # Generate new ride document
+            ride_ref = db.collection('rides').document() # Auto-generated ID
+            ride_id = ride_ref.id
+
+            # Access the 'users' collection in Firestore with the owner_id
+            user_ref = db.collection('users').document(owner_id)
+            # Fecth the user's document data
+            user_doc = user_ref.get()
+            # Convert the Firestore document into a Python dictionary
+            user_data = user_doc.to_dict()
+            # Get existing rides or empty list
+            rides_posted = user_data.get('ridesPosted', [])
+
+            if is_duplicate_ride(db, rides_posted, ride_details):
+                return jsonify({"error": "Duplicate ride post detected"}), 400
+
+            ride_data = ({
+                'ownerID': owner_id,
+                'ownerName': owner_name,
+                'from': ride_details['from'],
+                'to': ride_details['to'],
+                'date': ride_details['date'],
+                'departureTime': ride_details['departureTime'],
+                'maxPassengers': ride_details['maxPassengers'],
+                'cost': ride_details['cost'],
+                'currentPassengers': [],
+                'status': 'open',
+                'carModel': '',
+                'licensePlate': '',
+                'carVIN': ''
+            })
+
+            # Save the ride data to Firestore
+            ride_ref.set(ride_data)
+
+            # Append new ride ID and update Firestore
+            rides_posted.append(ride_id)
+            user_ref.update({'ridesPosted': rides_posted})
+
+            return jsonify({"message": "Ride posted successfully", "ride": ride_data}), 201
+        except FirebaseError:
+            return render_template('ridePost.html', error="Please try again.")
+
+    return render_template('ridePost.html')
 
 @app.route('/home')
 @auth_required
