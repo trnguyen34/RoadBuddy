@@ -1,36 +1,23 @@
+import React from "react";
+import { View, Text, Button, StyleSheet } from "react-native";
+import { router } from "expo-router";
+import Login from "./login";
 
-import React, { useEffect, useState } from "react";
-import { Text, View, ActivityIndicator, StyleSheet } from "react-native";
-import { fetchIndex } from "./api"; // Import API function
+// export default function Index() {
+//   return (
+//     <View style={styles.container}>
+//       <Text style={styles.text}>Welcome to RoadBuddy</Text>
+//       <Button title="Log In" onPress={() => router.push("/login")} />
+//       <Button title="Sign Up" onPress={() => router.push("/signup")} />
+//     </View>
+//   );
+// }
 
 export default function Index() {
-  const [message, setMessage] = useState<string | null>(null);
-  const [loading, setLoading] = useState<boolean>(true);
-
-  useEffect(() => {
-    const fetchData = async () => {
-      const data = await fetchIndex();
-      if (data) {
-        setMessage(data.message);
-      }
-      setLoading(false);
-    };
-
-    fetchData();
-  }, []);
-
-  return (
-    <View style={styles.container}>
-      {loading ? (
-        <ActivityIndicator size="large" />
-      ) : (
-        <Text style={styles.text}>{message || "No data received"}</Text>
-      )}
-    </View>
-  );
+  return <Login />;
 }
 
 const styles = StyleSheet.create({
   container: { flex: 1, justifyContent: "center", alignItems: "center" },
-  text: { fontSize: 18, fontWeight: "bold", textAlign: "center" },
+  text: { fontSize: 24, fontWeight: "bold" },
 });
