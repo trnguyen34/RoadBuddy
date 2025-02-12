@@ -1,4 +1,4 @@
-<!DOCTYPE html>
+<!-- <!DOCTYPE html>
 <html lang="en">
 <head>
     <meta charset="UTF-8">
@@ -62,5 +62,118 @@
 </script>
         </form>
     </div>
+</body>
+</html>
+ -->
+
+
+ <!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>RoadBuddy</title>
+    <style>
+        body {
+            font-family: 'Arial', sans-serif;
+            margin: 0;
+            padding: 0;
+            background-color: #f7f1e5;
+        }
+        .container {
+            max-width: 400px;
+            margin: auto;
+            background: #b3a397;
+            border-radius: 20px 20px 0 0;
+            padding: 20px;
+            text-align: center;
+            position: relative;
+            margin-top: 58%;
+        }
+        .header {
+            font-size: 24px;
+            font-weight: bold;
+            color: #5d4c42;
+        }
+        .car-image {
+            position: absolute;
+            top: -50px;
+            left: 20px;
+            width: 100px;
+        }
+        .welcome {
+            font-size: 22px;
+            font-weight: bold;
+            color: #fff;
+            margin-top: 60px;
+        }
+        .events {
+            color: #f4f4f4;
+            margin: 20px 0;
+        }
+        .event-item {
+            border-bottom: 1px solid #ddd;
+            padding: 5px;
+            margin: 20px;
+        }
+        .buttons {
+            display: flex;
+            justify-content: space-around;
+            margin-top: 40px;
+            margin-bottom: 40px;
+        }
+        .button {
+            background: white;
+            padding: 15px;
+            border-radius: 10px;
+            text-align: center;
+            font-weight: bold;
+            width: 120px;
+            box-shadow: 2px 2px 5px rgba(0, 0, 0, 0.2);
+            cursor: pointer;
+        }
+        .footer {
+            display: flex;
+            justify-content: space-between;
+            padding: 10px;
+            position: absolute;
+            bottom: 10px;
+            width: 90%;
+        }
+        .footer-icon {
+            width: 30px;
+            height: 30px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">RoadBuddy</div>
+        <img src="../images/green-car.svg" class="car-image" alt="Car">
+        <div class="welcome">Hello, User</div>
+        <div class="events">
+            <div class="event-item">Upcoming Events</div>
+            <div class="event-item">Event 1</div>
+            <div class="event-item">Event 2</div>
+        </div>
+        <div class="buttons">
+            <!-- add event handling -->
+            <div class="button">My Rides</div>
+            <div class="button">My Requests</div>
+        </div>
+        <form action="/logout" method="POST" style="margin-top: 20px;">
+            <button type="submit" class="button" style="background: #d9534f; color: white;">Logout</button>
+        </form>
+        <div class="footer">
+            <!-- make these into buttons -->
+            <img src="chat-icon.png" class="footer-icon" alt="Chat">
+            <img src="edit-icon.png" class="footer-icon" alt="Edit">
+        </div>
+    </div>
+    <script>
+        function sendMessage(action) {
+            window.ReactNativeWebView.postMessage(action);
+        }
+    </script>
 </body>
 </html>
