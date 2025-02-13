@@ -14,8 +14,7 @@ import {
 import { Picker } from "@react-native-picker/picker";
 import axios from "axios";
 import { router } from "expo-router";
-
-const BASE_URL = "http://192.168.4.26:8090";
+import { BASE_URL } from "../configs/base-url"
 
 // Define valid options.
 const validMakes = ["Toyota", "Honda", "Ford"];

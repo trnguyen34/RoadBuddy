@@ -1,4 +1,4 @@
-
+/* eslint-disable react/jsx-no-duplicate-props */
 import React, { useState } from 'react';
 import { 
   View, 
@@ -8,39 +8,97 @@ import {
   StyleSheet, 
   ActivityIndicator, 
   Alert,
+  TouchableOpacity, 
+  Platform,
+  SafeAreaView,
+  Modal,
 } from 'react-native';
 import { GooglePlacesAutocomplete } from 'react-native-google-places-autocomplete';
 import 'react-native-get-random-values';
-import { v4 as uuidv4 } from 'uuid';
 import axios from 'axios';
 import { router } from 'expo-router';
 import DateTimePicker from '@react-native-community/datetimepicker';
-
-const BASE_URL = 'http://192.168.4.26:8090';
+import { BASE_URL } from "../configs/base-url";
+import { googlePlaceApi } from "../configs/api";
 
 export default function PostRide() {
   const [fromAddress, setFromAddress] = useState('');
   const [toAddress, setToAddress] = useState('');
-  const [date, setDate] = useState('');
-  const [departureTime, setDepartureTime] = useState('');
+
+  // Date and Time states
+  const today = new Date();
+  const initialDateText = today.toISOString().split('T')[0];
+  const initialTimeText = today.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', hour12: true });
+
+  const [date, setDate] = useState(new Date());
+  const [dateText, setDateText] = useState(initialDateText);
+
+  const [departureTime, setDepartureTime] = useState(new Date());
+  const [departureTimeText, setDepartureTimeText] = useState(initialTimeText);
+
+  // Controls to show/hide pickers
+  const [showDatePicker, setShowDatePicker] = useState(false);
+  const [showTimePicker, setShowTimePicker] = useState(false);
+
   const [maxPassengers, setMaxPassengers] = useState('');
   const [cost, setCost] = useState('');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
 
+  // Helper to check if a given time (Date) is in the past relative to now
+  const isTimeInPast = (selectedTime: Date) => {
+    const now = new Date();
+    return selectedTime.getTime() < now.getTime();
+  };
+
   const handlePostRide = async () => {
-    if (!fromAddress || !toAddress || !date || !departureTime || !maxPassengers || !cost) {
-      Alert.alert('Error', 'Please fill in all required fields.');
+    // Ensure the user selects a valid "From" address
+    if (!fromAddress.trim()) {
+      Alert.alert('Error', 'Please enter a valid "From" address.');
       return;
     }
+  
+    // Ensure the user selects a valid "To" address
+    if (!toAddress.trim()) {
+      Alert.alert('Error', 'Please enter a valid "To" address.');
+      return;
+    }
+
+    // Before posting, validate that the chosen date is not in the past
+    const todayString = new Date().toISOString().split('T')[0];
+    if (dateText < todayString) {
+      Alert.alert('Error', 'Date cannot be in the past.');
+      return;
+    }
+    // If the selected date is today, ensure the departure time is not in the past.
+    if (dateText === todayString && isTimeInPast(departureTime)) {
+      Alert.alert('Error', 'Departure time cannot be in the past.');
+      return;
+    }
+
+    if (!departureTimeText.trim()) {
+      Alert.alert('Error', 'Please fill in the "departure time" field.');
+      return;
+    }
+
+    if (!maxPassengers.trim()) {  
+      Alert.alert('Error', 'Please fill in the "maximum passengers" field.');
+      return;
+    }
+
+    if (!cost.replace('$', '')) {  // Remove the dollar sign before checking
+      Alert.alert('Error', 'Please fill in the "cost" field.');
+      return;
+    }
+
     setLoading(true);
     setError('');
     try {
       const payload = {
         from: fromAddress,
         to: toAddress,
-        date: date,
-        departure_time: departureTime,
+        date: dateText,
+        departure_time: departureTimeText,
         max_passengers: parseInt(maxPassengers, 10),
         cost: parseFloat(cost),
       };
@@ -61,92 +119,224 @@ export default function PostRide() {
     } finally {
       setLoading(false);
     }
-};
+  };
 
   return (
     <View style={styles.container}>
-      {/*
-      <View style={styles.autocompleteContainer}>
+      {/* "From" Autocomplete */}
+      <SafeAreaView style={styles.autocompleteContainer}>
         <GooglePlacesAutocomplete
           placeholder="From"
           onPress={(data, details = null) => {
             setFromAddress(data.description);
           }}
-          query={{
-            key: 'YOUR_GOOGLE_API_KEY',
-            language: 'en',
-            components: 'country:us',
-          }}
+          query={{ key: googlePlaceApi, components: 'country:us' }}
           fetchDetails={true}
+          onFail={error => console.log(error)}
+          onNotFound={() => console.log('no results')}
           styles={{
-            textInputContainer: styles.autocompleteTextInputContainer,
-            textInput: styles.autocompleteTextInput,
+            container: { flex: 0 },
+            description: {
+              color: '#000',
+              fontSize: 14,
+            },
+            predefinedPlacesDescription: {
+              color: '#3caf50',
+            },
+            textInputContainer: {
+              borderWidth: 1,
+              borderColor: '#ccc',
+              borderRadius: 8,
+              backgroundColor: '#fff',
+            },
+            textInput: {
+              height: 45,
+              borderRadius: 8,
+              paddingHorizontal: 10,
+              fontSize: 14,
+              color: '#000',
+            },
           }}
         />
-      </View>
+      </SafeAreaView>
 
-      <View style={styles.autocompleteContainer}>
+      {/* "To" Autocomplete */}
+      <SafeAreaView style={styles.autocompleteContainer}>
         <GooglePlacesAutocomplete
           placeholder="To"
           onPress={(data, details = null) => {
             setToAddress(data.description);
           }}
-          query={{
-            key: 'YOUR_GOOGLE_API_KEY',
-            language: 'en',
-            components: 'country:us',
-          }}
+          query={{ key: googlePlaceApi, components: 'country:us' }}
           fetchDetails={true}
+          onFail={error => console.log(error)}
+          onNotFound={() => console.log('no results')}
           styles={{
-            textInputContainer: styles.autocompleteTextInputContainer,
-            textInput: styles.autocompleteTextInput,
+            container: { flex: 0 },
+            description: {
+              color: '#000',
+              fontSize: 14,
+            },
+            predefinedPlacesDescription: {
+              color: '#3caf50',
+            },
+            textInputContainer: {
+              borderWidth: 1,
+              borderColor: '#ccc',
+              borderRadius: 8,
+              backgroundColor: '#fff',
+            },
+            textInput: {
+              height: 45,
+              borderRadius: 8,
+              paddingHorizontal: 10,
+              fontSize: 14,
+              color: '#000',
+            },
           }}
         />
-      </View>
-      */}
-
-      {/* Regular TextInput for the "From" address */}
-      <TextInput
-        style={styles.input}
-        placeholder="From"
-        value={fromAddress}
-        onChangeText={setFromAddress}
-      />
-
-      {/* Regular TextInput for the "To" address */}
-      <TextInput
-        style={styles.input}
-        placeholder="To"
-        value={toAddress}
-        onChangeText={setToAddress}
-      />
-
-      {/* Other ride details */}
+      </SafeAreaView>
+      
+      {/* Date Picker */}
       <TextInput
         style={styles.input}
         placeholder="Date (YYYY-MM-DD)"
-        value={date}
-        onChangeText={setDate}
+        value={dateText}
+        onFocus={() => setShowDatePicker(true)}
+        onChangeText={(text) => {
+          setDateText(text);
+          // Attempt to parse the text as a date
+          const parsedDate = new Date(text);
+          if (!isNaN(parsedDate.getTime())) {
+            setDate(parsedDate);
+          }
+        }}
       />
+
+      {/* Modal for Date Picker */}
+      <Modal
+        transparent={true}
+        visible={showDatePicker}
+        animationType="fade"
+        onRequestClose={() => setShowDatePicker(false)}
+      >
+        {/* Overlay: Tapping outside dismisses the modal */}
+        <TouchableOpacity
+          style={styles.modalOverlay}
+          activeOpacity={1}
+          onPressOut={() => setShowDatePicker(false)}
+        >
+          {/* Inner content: Prevents touch propagation */}
+          <TouchableOpacity style={styles.modalContent} activeOpacity={1}>
+            <DateTimePicker
+              value={date}
+              mode="date"
+              display={Platform.OS === 'ios' ? 'inline' : 'default'}
+              minimumDate={new Date()} // Prevent selecting past dates
+              onChange={(event, selectedDate) => {
+                if (selectedDate) {
+                  setDate(selectedDate);
+                  const formatted = selectedDate.toISOString().split('T')[0];
+                  setDateText(formatted);
+                }
+              }}
+            />
+            <Button title="Done" onPress={() => setShowDatePicker(false)} />
+          </TouchableOpacity>
+        </TouchableOpacity>
+      </Modal>
+
+      {/* Time Field */}
       <TextInput
         style={styles.input}
         placeholder="Departure Time (e.g., 08:00 AM)"
-        value={departureTime}
-        onChangeText={setDepartureTime}
+        value={departureTimeText}
+        onFocus={() => setShowTimePicker(true)}
+        // Optionally, you can also let the user edit the text directly
+        onChangeText={(text) => {
+          setDepartureTimeText(text);
+          const parsedTime = new Date(`1970-01-01T${text}`);
+          if (!isNaN(parsedTime.getTime())) {
+            setDepartureTime(parsedTime);
+          }
+        }}
       />
+
+      {/* Modal for Time Picker */}
+      <Modal
+        transparent={true}
+        visible={showTimePicker}
+        animationType="fade"
+        onRequestClose={() => setShowTimePicker(false)}
+      >
+        {/* Overlay: Tapping outside the inner content will dismiss the modal */}
+        <TouchableOpacity
+          style={styles.modalOverlay}
+          activeOpacity={1}
+          onPressOut={() => setShowTimePicker(false)}
+        >
+          {/* Inner content: stops the touch from propagating */}
+          <TouchableOpacity style={styles.modalContent} activeOpacity={1}>
+            <DateTimePicker
+              value={departureTime}
+              mode="time"
+              display={Platform.OS === 'ios' ? 'spinner' : 'default'}
+              onChange={(event, selectedTime) => {
+                if (selectedTime) {
+                  // Validate if the chosen time (when date is today) isn't in the past
+                  if (dateText === new Date().toISOString().split('T')[0] && isTimeInPast(selectedTime)) {
+                    Alert.alert('Error', 'Departure time cannot be in the past.');
+                  } else {
+                    setDepartureTime(selectedTime);
+                    const formattedTime = selectedTime.toLocaleTimeString([], {
+                      hour: '2-digit',
+                      minute: '2-digit',
+                      hour12: true,
+                    });
+                    setDepartureTimeText(formattedTime);
+                  }
+                }
+              }}
+            />
+            <Button title="Done" onPress={() => setShowTimePicker(false)} />
+          </TouchableOpacity>
+        </TouchableOpacity>
+      </Modal>
+
+      {/* Other ride details */}
       <TextInput
         style={styles.input}
         placeholder="Max Passengers"
         value={maxPassengers}
         onChangeText={setMaxPassengers}
         keyboardType="numeric"
+        maxLength={2}
+        onChangeText={(text) => {
+          // Remove any non-numeric characters
+          const filteredText = text.replace(/[^0-9]/g, '');
+          setMaxPassengers(filteredText);
+        }}
       />
+
       <TextInput
         style={styles.input}
         placeholder="Cost"
-        value={cost}
-        onChangeText={setCost}
+        value={`$${cost}`} // Always show the dollar sign
         keyboardType="numeric"
+        onChangeText={(text) => {
+          // Remove any non-numeric characters except for a single decimal point
+          let filteredText = text.replace(/[^0-9.]/g, '');
+        
+          // Prevent multiple decimal points
+          if ((filteredText.match(/\./g) || []).length > 1) return;
+        
+          // Ensure correct formatting (prevent ".12" from becoming invalid)
+          if (filteredText.startsWith('.')) {
+            filteredText = `0${filteredText}`;
+          }
+        
+          setCost(filteredText);
+        }}
       />
 
       {loading ? (
@@ -188,18 +378,16 @@ const styles = StyleSheet.create({
   autocompleteContainer: {
     marginBottom: 12,
   },
-  autocompleteTextInputContainer: {
-    backgroundColor: '#fff',
-    borderTopWidth: 0,
-    borderBottomWidth: 0,
-    paddingHorizontal: 0,
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0,0,0,0.5)',
+    justifyContent: 'center',
+    alignItems: 'center',
   },
-  autocompleteTextInput: {
-    height: 45,
-    borderColor: '#ccc',
-    borderWidth: 1,
-    borderRadius: 8,
-    paddingHorizontal: 10,
-    fontSize: 16,
+  modalContent: {
+    backgroundColor: '#fff',
+    padding: 20,
+    borderRadius: 10,
+    alignItems: 'center',
   },
 });

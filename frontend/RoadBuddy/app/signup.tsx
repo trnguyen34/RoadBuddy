@@ -11,8 +11,7 @@ import axios from "axios";
 import { router } from "expo-router";
 import { signInWithEmailAndPassword } from "firebase/auth";
 import { auth } from "../firebase/app/firebase-config";
-
-const BASE_URL = "http://192.168.4.26:8090"; 
+import { BASE_URL } from "../configs/base-url"
 
 export default function Signup() {
   const [name, setName] = useState<string>("");

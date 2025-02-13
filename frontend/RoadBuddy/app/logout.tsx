@@ -3,8 +3,7 @@ import React, { useEffect, useState } from "react";
 import { View, Text, ActivityIndicator, Button, StyleSheet } from "react-native";
 import axios from "axios";
 import { router } from "expo-router";
-
-const BASE_URL = "http://192.168.4.26:8090"; 
+import { BASE_URL } from "../configs/base-url"
 
 export default function Logout() {
   const [loading, setLoading] = useState<boolean>(true);
