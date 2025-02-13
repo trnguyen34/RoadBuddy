@@ -1,4 +1,3 @@
-// app/addCar.tsx
 
 import React, { useState } from "react";
 import {
@@ -10,11 +9,13 @@ import {
   ActivityIndicator,
   TextInput,
   Alert,
+  Platform,
+  Animated,
 } from "react-native";
 import { Picker } from "@react-native-picker/picker";
 import axios from "axios";
 import { router } from "expo-router";
-import { BASE_URL } from "../configs/base-url"
+import { BASE_URL } from "../configs/base-url";
 
 // Define valid options.
 const validMakes = ["Toyota", "Honda", "Ford"];
@@ -43,6 +44,7 @@ const validColors = [
   "Brown",
 ];
 
+
 export default function AddCar() {
   // Other fields.
   const [licensePlate, setLicensePlate] = useState<string>("");
@@ -65,10 +67,42 @@ export default function AddCar() {
   const [yearModalVisible, setYearModalVisible] = useState<boolean>(false);
   const [colorModalVisible, setColorModalVisible] = useState<boolean>(false);
 
+  const fadeAnim = useState(new Animated.Value(1))[0];
+  const translateYAnim = useState(new Animated.Value(0))[0]; // Vertical position animation
+
   // When user selects a new make, update the model accordingly (resetting it).
   const handleMakeChange = (selectedMake: string) => {
     setMake(selectedMake);
     setModel(""); // Force user to choose a model for the new make.
+    setError("");
+    fadeAnim.setValue(1);
+    translateYAnim.setValue(0);
+  };
+
+  const handleModelSelection = () => {
+    if (!make) {
+      setError("Please select a make first.");
+      fadeAnim.setValue(1); // Reset opacity to fully visible
+      translateYAnim.setValue(0); // Reset position
+  
+      // Start fade-out and slide-up animation after 2 seconds
+      setTimeout(() => {
+        Animated.parallel([
+          Animated.timing(fadeAnim, {
+            toValue: 0, // Fade out
+            duration: 1000, // 1 second fade-out
+            useNativeDriver: true,
+          }),
+          Animated.timing(translateYAnim, {
+            toValue: -10, // Move it up slightly
+            duration: 1000, // 1 second slide-up
+            useNativeDriver: true,
+          }),
+        ]).start(() => setError("")); // Clear error after animation completes
+      }, 2000);
+    } else {
+      setModelModalVisible(true);
+    }
   };
 
   const handleAddCar = async () => {
@@ -89,7 +123,7 @@ export default function AddCar() {
         vin,
         year,
         color,
-        isPrimary: isPrimary.toString(), // Or simply isPrimary if API accepts booleans
+        isPrimary: isPrimary.toString(),
       };
 
       const response = await axios.post(`${BASE_URL}/api/add-car`, payload, {
@@ -97,9 +131,8 @@ export default function AddCar() {
       });
 
       if (response.status === 201) {
-        // setSuccess("Car added successfully!");
-        Alert.alert('Success', 'Ride posted successfully!');
-				router.replace('/home');
+        Alert.alert("Success", "Ride posted successfully!");
+        router.replace("/home");
       } else {
         setError("Failed to add car.");
       }
@@ -113,12 +146,18 @@ export default function AddCar() {
 
   return (
     <View style={styles.container}>
-      {/* <Text style={styles.header}>Add a Car</Text> */}
+      {error ? (
+      <Animated.View
+          style={[
+            styles.errorBox,
+            { opacity: fadeAnim, transform: [{ translateY: translateYAnim }] },
+          ]}
+        >
+          <Text style={styles.errorText}>{error}</Text>
+        </Animated.View>
+      ) : null}
 
-      {error ? <Text style={styles.errorText}>{error}</Text> : null}
-      {success ? <Text style={styles.successText}>{success}</Text> : null}
-
-      {/* Touchable selectors for make, model, year, and color */}
+      {/* Touchable selectors */}
       <TouchableOpacity
         style={styles.selector}
         onPress={() => setMakeModalVisible(true)}
@@ -130,9 +169,8 @@ export default function AddCar() {
 
       <TouchableOpacity
         style={styles.selector}
-        onPress={() => setModelModalVisible(true)}
-        disabled={!make} // Disable model selection until a make is chosen.
-      >
+        onPress={handleModelSelection}
+        >
         <Text style={[styles.selectorText, !model && styles.placeholderText]}>
           {model || "Select Model"}
         </Text>
@@ -156,7 +194,7 @@ export default function AddCar() {
         </Text>
       </TouchableOpacity>
 
-      {/* License Plate Input with similar styling */}
+      {/* License Plate Input */}
       <TextInput
         style={[
           styles.selector,
@@ -168,7 +206,7 @@ export default function AddCar() {
         onChangeText={setLicensePlate}
       />
 
-      {/* VIN Input with similar styling */}
+      {/* VIN Input */}
       <TextInput
         style={[
           styles.selector,
@@ -210,8 +248,12 @@ export default function AddCar() {
         animationType="slide"
         onRequestClose={() => setMakeModalVisible(false)}
       >
-        <View style={styles.modalOverlay}>
-          <View style={styles.modalContent}>
+        <TouchableOpacity
+          style={styles.modalOverlay}
+          activeOpacity={1}
+          onPressOut={() => setMakeModalVisible(false)}
+        >
+          <TouchableOpacity style={styles.modalContent} activeOpacity={1}>
             <Text style={styles.modalHeader}>Select Make</Text>
             <Picker
               selectedValue={make || validMakes[0]}
@@ -228,8 +270,8 @@ export default function AddCar() {
             >
               <Text style={styles.modalButtonText}>Done</Text>
             </TouchableOpacity>
-          </View>
-        </View>
+          </TouchableOpacity>
+        </TouchableOpacity>
       </Modal>
 
       {/* Modal for Model */}
@@ -239,8 +281,12 @@ export default function AddCar() {
         animationType="slide"
         onRequestClose={() => setModelModalVisible(false)}
       >
-        <View style={styles.modalOverlay}>
-          <View style={styles.modalContent}>
+        <TouchableOpacity
+          style={styles.modalOverlay}
+          activeOpacity={1}
+          onPressOut={() => setModelModalVisible(false)}
+        >
+          <TouchableOpacity style={styles.modalContent} activeOpacity={1}>
             <Text style={styles.modalHeader}>Select Model</Text>
             <Picker
               selectedValue={model || (make ? validModels[make][0] : "")}
@@ -258,8 +304,8 @@ export default function AddCar() {
             >
               <Text style={styles.modalButtonText}>Done</Text>
             </TouchableOpacity>
-          </View>
-        </View>
+          </TouchableOpacity>
+        </TouchableOpacity>
       </Modal>
 
       {/* Modal for Year */}
@@ -269,8 +315,12 @@ export default function AddCar() {
         animationType="slide"
         onRequestClose={() => setYearModalVisible(false)}
       >
-        <View style={styles.modalOverlay}>
-          <View style={styles.modalContent}>
+        <TouchableOpacity
+          style={styles.modalOverlay}
+          activeOpacity={1}
+          onPressOut={() => setYearModalVisible(false)}
+        >
+          <TouchableOpacity style={styles.modalContent} activeOpacity={1}>
             <Text style={styles.modalHeader}>Select Year</Text>
             <Picker
               selectedValue={year || validYears[0]}
@@ -287,8 +337,8 @@ export default function AddCar() {
             >
               <Text style={styles.modalButtonText}>Done</Text>
             </TouchableOpacity>
-          </View>
-        </View>
+          </TouchableOpacity>
+        </TouchableOpacity>
       </Modal>
 
       {/* Modal for Color */}
@@ -298,8 +348,12 @@ export default function AddCar() {
         animationType="slide"
         onRequestClose={() => setColorModalVisible(false)}
       >
-        <View style={styles.modalOverlay}>
-          <View style={styles.modalContent}>
+        <TouchableOpacity
+          style={styles.modalOverlay}
+          activeOpacity={1}
+          onPressOut={() => setColorModalVisible(false)}
+        >
+          <TouchableOpacity style={styles.modalContent} activeOpacity={1}>
             <Text style={styles.modalHeader}>Select Color</Text>
             <Picker
               selectedValue={color || validColors[0]}
@@ -316,33 +370,18 @@ export default function AddCar() {
             >
               <Text style={styles.modalButtonText}>Done</Text>
             </TouchableOpacity>
-          </View>
-        </View>
+          </TouchableOpacity>
+        </TouchableOpacity>
       </Modal>
     </View>
   );
 }
 
 const styles = StyleSheet.create({
-  container: { 
-    flex: 1, 
-    padding: 20, 
+  container: {
+    flex: 1,
+    padding: 20,
     backgroundColor: "#fff",
-    // justifyContent: "center"
-  },
-  header: { 
-    fontSize: 28, 
-    fontWeight: "bold", 
-    marginBottom: 20, 
-    textAlign: "center" 
-  },
-  input: { 
-    height: 45, 
-    borderColor: "#ccc", 
-    borderWidth: 1, 
-    borderRadius: 8, 
-    paddingHorizontal: 10, 
-    marginBottom: 12 
   },
   selector: {
     paddingVertical: 12,
@@ -354,18 +393,17 @@ const styles = StyleSheet.create({
   },
   selectorText: {
     fontSize: 16,
-    fontWeight: "bold",
   },
   placeholderText: {
     color: "#999",
-    fontStyle: "italic",
     fontWeight: "normal",
     fontSize: 16,
   },
   modalOverlay: {
     flex: 1,
+    backgroundColor: "rgba(0,0,0,0.5)",
     justifyContent: "flex-end",
-    backgroundColor: "rgba(0, 0, 0, 0.5)",
+    marginBottom: 10,
   },
   modalContent: {
     backgroundColor: "#fff",
@@ -375,23 +413,26 @@ const styles = StyleSheet.create({
   },
   modalHeader: {
     fontSize: 20,
-    fontWeight: "bold",
     marginBottom: 10,
   },
   picker: {
     width: "100%",
   },
   modalButton: {
-    marginTop: 10,
     backgroundColor: "#007bff",
-    paddingVertical: 12,
+    paddingVertical: 10,
+    paddingHorizontal: 20,
     borderRadius: 8,
     alignItems: "center",
+    justifyContent: "center",
+    marginTop: 10,
+    width: "80%",
+    alignSelf: "center",
   },
   modalButtonText: {
     color: "#fff",
-    fontSize: 18,
-    fontWeight: "600",
+    fontSize: 16,
+    fontWeight: "bold",
   },
   checkboxContainer: {
     flexDirection: "row",
@@ -413,29 +454,26 @@ const styles = StyleSheet.create({
   checkboxTick: {
     fontSize: 18,
   },
-  button: { 
-    backgroundColor: "#007bff", 
-    paddingVertical: 12, 
-    borderRadius: 8, 
+  button: {
+    backgroundColor: "#007bff",
+    paddingVertical: 12,
+    borderRadius: 8,
     alignItems: "center",
     marginTop: 10,
   },
-  backButton: {
-    backgroundColor: "#6c757d",
+  buttonText: {
+    color: "#fff",
+    fontSize: 18,
+    fontWeight: "600",
   },
-  buttonText: { 
-    color: "#fff", 
-    fontSize: 18, 
-    fontWeight: "600"
-  },
-  errorText: { 
-    color: "red", 
-    marginBottom: 10, 
-    textAlign: "center"
+  errorText: {
+    color: "red",
+    marginBottom: 10,
+    textAlign: "center",
   },
   successText: {
     color: "green",
     marginBottom: 10,
-    textAlign: "center"
+    textAlign: "center",
   },
 });

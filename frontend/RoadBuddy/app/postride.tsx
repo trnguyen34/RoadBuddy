@@ -51,6 +51,12 @@ export default function PostRide() {
     return selectedTime.getTime() < now.getTime();
   };
 
+  // Helper function for displaying month in this format MM-DD-YYYY
+  const formatDateForDisplay = (isoDate) => {
+    const [year, month, day] = isoDate.split('-'); // Assuming "YYYY-MM-DD" format
+    return `${month}-${day}-${year}`; // Convert to MM-DD-YYYY
+  };
+
   const handlePostRide = async () => {
     // Ensure the user selects a valid "From" address
     if (!fromAddress.trim()) {
@@ -86,7 +92,7 @@ export default function PostRide() {
       return;
     }
 
-    if (!cost.replace('$', '')) {  // Remove the dollar sign before checking
+    if (!cost.replace('$ ', '')) {  // Remove the dollar sign before checking
       Alert.alert('Error', 'Please fill in the "cost" field.');
       return;
     }
@@ -138,7 +144,7 @@ export default function PostRide() {
             container: { flex: 0 },
             description: {
               color: '#000',
-              fontSize: 14,
+              fontSize: 16,
             },
             predefinedPlacesDescription: {
               color: '#3caf50',
@@ -153,7 +159,7 @@ export default function PostRide() {
               height: 45,
               borderRadius: 8,
               paddingHorizontal: 10,
-              fontSize: 14,
+              fontSize: 16,
               color: '#000',
             },
           }}
@@ -175,7 +181,7 @@ export default function PostRide() {
             container: { flex: 0 },
             description: {
               color: '#000',
-              fontSize: 14,
+              fontSize: 16,
             },
             predefinedPlacesDescription: {
               color: '#3caf50',
@@ -190,49 +196,38 @@ export default function PostRide() {
               height: 45,
               borderRadius: 8,
               paddingHorizontal: 10,
-              fontSize: 14,
+              fontSize: 16,
               color: '#000',
             },
           }}
         />
       </SafeAreaView>
-      
+
       {/* Date Picker */}
-      <TextInput
-        style={styles.input}
-        placeholder="Date (YYYY-MM-DD)"
-        value={dateText}
-        onFocus={() => setShowDatePicker(true)}
-        onChangeText={(text) => {
-          setDateText(text);
-          // Attempt to parse the text as a date
-          const parsedDate = new Date(text);
-          if (!isNaN(parsedDate.getTime())) {
-            setDate(parsedDate);
-          }
-        }}
-      />
+      <TouchableOpacity style={styles.input} onPress={() => setShowDatePicker(true)}>
+        <Text style={styles.inputText}>
+          {dateText ? formatDateForDisplay(dateText) : "Select Date (MM-DD-YYYY)"}
+        </Text>
+      </TouchableOpacity>
 
       {/* Modal for Date Picker */}
       <Modal
         transparent={true}
         visible={showDatePicker}
-        animationType="fade"
+        animationType="slide"
         onRequestClose={() => setShowDatePicker(false)}
       >
-        {/* Overlay: Tapping outside dismisses the modal */}
         <TouchableOpacity
           style={styles.modalOverlay}
           activeOpacity={1}
           onPressOut={() => setShowDatePicker(false)}
         >
-          {/* Inner content: Prevents touch propagation */}
           <TouchableOpacity style={styles.modalContent} activeOpacity={1}>
             <DateTimePicker
               value={date}
               mode="date"
               display={Platform.OS === 'ios' ? 'inline' : 'default'}
-              minimumDate={new Date()} // Prevent selecting past dates
+              minimumDate={new Date()}
               onChange={(event, selectedDate) => {
                 if (selectedDate) {
                   setDate(selectedDate);
@@ -241,41 +236,30 @@ export default function PostRide() {
                 }
               }}
             />
-            <Button title="Done" onPress={() => setShowDatePicker(false)} />
+            <TouchableOpacity style={styles.modalButton} onPress={() => setShowDatePicker(false)}>
+              <Text style={styles.modalButtonText}>Done</Text>
+            </TouchableOpacity>
           </TouchableOpacity>
         </TouchableOpacity>
       </Modal>
 
-      {/* Time Field */}
-      <TextInput
-        style={styles.input}
-        placeholder="Departure Time (e.g., 08:00 AM)"
-        value={departureTimeText}
-        onFocus={() => setShowTimePicker(true)}
-        // Optionally, you can also let the user edit the text directly
-        onChangeText={(text) => {
-          setDepartureTimeText(text);
-          const parsedTime = new Date(`1970-01-01T${text}`);
-          if (!isNaN(parsedTime.getTime())) {
-            setDepartureTime(parsedTime);
-          }
-        }}
-      />
+      {/* Time Field as TouchableOpacity */}
+      <TouchableOpacity style={styles.input} onPress={() => setShowTimePicker(true)}>
+        <Text style={styles.inputText}>{departureTimeText || "Select Departure Time"}</Text>
+      </TouchableOpacity>
 
       {/* Modal for Time Picker */}
       <Modal
         transparent={true}
         visible={showTimePicker}
-        animationType="fade"
+        animationType="slide"
         onRequestClose={() => setShowTimePicker(false)}
       >
-        {/* Overlay: Tapping outside the inner content will dismiss the modal */}
         <TouchableOpacity
           style={styles.modalOverlay}
           activeOpacity={1}
           onPressOut={() => setShowTimePicker(false)}
         >
-          {/* Inner content: stops the touch from propagating */}
           <TouchableOpacity style={styles.modalContent} activeOpacity={1}>
             <DateTimePicker
               value={departureTime}
@@ -283,7 +267,6 @@ export default function PostRide() {
               display={Platform.OS === 'ios' ? 'spinner' : 'default'}
               onChange={(event, selectedTime) => {
                 if (selectedTime) {
-                  // Validate if the chosen time (when date is today) isn't in the past
                   if (dateText === new Date().toISOString().split('T')[0] && isTimeInPast(selectedTime)) {
                     Alert.alert('Error', 'Departure time cannot be in the past.');
                   } else {
@@ -298,7 +281,9 @@ export default function PostRide() {
                 }
               }}
             />
-            <Button title="Done" onPress={() => setShowTimePicker(false)} />
+            <TouchableOpacity style={styles.modalButton} onPress={() => setShowTimePicker(false)}>
+              <Text style={styles.modalButtonText}>Done</Text>
+            </TouchableOpacity>
           </TouchableOpacity>
         </TouchableOpacity>
       </Modal>
@@ -321,7 +306,7 @@ export default function PostRide() {
       <TextInput
         style={styles.input}
         placeholder="Cost"
-        value={`$${cost}`} // Always show the dollar sign
+        value={`$ ${cost}`} // Always show the dollar sign
         keyboardType="numeric"
         onChangeText={(text) => {
           // Remove any non-numeric characters except for a single decimal point
@@ -342,7 +327,9 @@ export default function PostRide() {
       {loading ? (
         <ActivityIndicator size="large" color="#007bff" />
       ) : (
-        <Button title="Post Ride" onPress={handlePostRide} />
+        <TouchableOpacity style={styles.button} onPress={handlePostRide}>
+          <Text style={styles.buttonText}>Post Ride</Text>
+        </TouchableOpacity>
       )}
 
       {error ? <Text style={styles.error}>{error}</Text> : null}
@@ -369,6 +356,8 @@ const styles = StyleSheet.create({
     borderRadius: 8,
     paddingHorizontal: 10,
     marginBottom: 12,
+    fontSize: 16,
+    justifyContent: 'center',
   },
   error: {
     color: 'red',
@@ -381,13 +370,57 @@ const styles = StyleSheet.create({
   modalOverlay: {
     flex: 1,
     backgroundColor: 'rgba(0,0,0,0.5)',
-    justifyContent: 'center',
-    alignItems: 'center',
+    justifyContent: "flex-end",
+    marginBottom: 10,
   },
   modalContent: {
     backgroundColor: '#fff',
     padding: 20,
     borderRadius: 10,
     alignItems: 'center',
+  },
+  button: {
+    backgroundColor: '#007bff',  // Blue background
+    paddingVertical: 10,
+    paddingHorizontal: 20,
+    borderRadius: 8,  // Rounded corners
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginTop: 10,
+    elevation: 3,  // Adds shadow for Android
+    shadowColor: '#000',  // Adds shadow for iOS
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.3,
+    shadowRadius: 3,
+  },
+  buttonText: {
+    color: '#fff',  // White text
+    fontSize: 18,
+    fontWeight: 'bold',
+  },
+  modalButton: {
+    backgroundColor: '#007bff', // Blue color
+    paddingVertical: 10,
+    paddingHorizontal: 20,
+    borderRadius: 8,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginTop: 10,
+    elevation: 3, // Adds shadow for Android
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.3,
+    shadowRadius: 3,
+    width: '80%', // Adjust width
+    alignSelf: 'center', // Center it in modal
+  },
+  modalButtonText: {
+    color: '#fff', // White text
+    fontSize: 16,
+    fontWeight: 'bold',
+  },
+  inputText: {
+    fontSize: 16,
+    color: '#000',
   },
 });
