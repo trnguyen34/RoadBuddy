@@ -64,8 +64,10 @@ def authorize():
         Response: A redirect to the home page if authentication succeeds, or a 
         401 Unauthorized response if it fails.
     """
+    # Retrieve the token from the Authorization header.
     token = request.headers.get('Authorization')
     if not token or not token.startswith('Bearer '):
+        # Return a JSON error response if no valid token is provided.
         return jsonify({"error": "Unauthorized: No token provided"}), 401
 
     # Remove 'Bearer ' prefix from the token.
