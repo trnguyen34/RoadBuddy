@@ -9,13 +9,17 @@ import firebase_admin
 from firebase_admin import credentials, firestore, auth
 from firebase_admin.auth import InvalidIdTokenError, EmailAlreadyExistsError
 from firebase_admin.exceptions import FirebaseError
+from flask_cors import CORS
 
-from utils import is_duplicate_car
+from utils import (
+    is_duplicate_car, is_duplicate_ride
+)
 
 app = Flask(__name__)
+CORS(app, supports_credentials=True)
 app.secret_key = os.getenv('SECRET_KEY')
 
-app.config['SESSION_COOKIE_SECURE'] = True
+app.config['SESSION_COOKIE_SECURE'] = False
 app.config['SESSION_COOKIE_HTTPONLY'] = True
 app.config['PERMANENT_SESSION_LIFETIME'] = timedelta(days=1)
 app.config['SESSION_REFRESH_EACH_REQUEST'] = True
@@ -42,7 +46,7 @@ def auth_required(f):
     @wraps(f)
     def decorated_function(*args, **kwargs):
         if 'user' not in session:
-            return redirect(url_for('login'))
+            return jsonify({"error": "User is not logged in"}), 401
         return f(*args, **kwargs)
 
     return decorated_function
@@ -59,18 +63,25 @@ def authorize():
         Response: A redirect to the home page if authentication succeeds, or a 
         401 Unauthorized response if it fails.
     """
+    # Retrieve the token from the Authorization header.
     token = request.headers.get('Authorization')
     if not token or not token.startswith('Bearer '):
-        return "Unauthorized", 401
+        # Return a JSON error response if no valid token is provided.
+        return jsonify({"error": "Unauthorized: No token provided"}), 401
 
+    # Remove 'Bearer ' prefix from the token.
     token = token[7:]
-
     try:
-        decoded_token = auth.verify_id_token(token) # Validate token
-        session['user'] = decoded_token # Add user to session
-        return redirect(url_for('home'))
+        # Verify the token with Firebase.
+        decoded_token = auth.verify_id_token(token)
+        # Store the decoded token (user info) in the session.
+        session['user'] = decoded_token
+
+        # Create a JSON response indicating success.
+        response = jsonify({"message": "Logged in successfully", "cookie": decoded_token})
+        return response, 200
     except InvalidIdTokenError:
-        return "Unauthorized", 401
+        return jsonify({"error": "Unauthorized: Invalid token"}), 401
 
 @app.route('/', methods=['GET'])
 def index():
@@ -84,9 +95,10 @@ def index():
         Response: A redirect to the home page for authenticated users, or the 
         login page for unauthenticated users.
     """
-    if 'user' in session:
-        return redirect(url_for('home'))
-    return redirect(url_for('login'))
+    # if 'user' in session:
+    #     return redirect(url_for('home'))
+    # return redirect(url_for('login'))
+    return jsonify({"message": "Welcome to RoadBuddy!"}), 200
 
 
 @app.route('/login', methods=['GET', 'POST'])
@@ -193,8 +205,7 @@ def add_car():
 
         try:
             user_id = session['user'].get('uid')
-            user_ref = db.collection('users').document(user_id)
-            cars_ref = user_ref.collection('cars')
+            cars_ref = db.collection('users').document(user_id).collection('cars')
 
             if is_duplicate_car(db, user_id, car_details):
                 return jsonify({"error": "Duplicate car detected"}), 400
@@ -226,7 +237,199 @@ def home():
         Response: The rendered home page for the authenticated user.
     """
     user_name = session['user'].get('name', 'Guest')
-    return render_template('home.html', user_name=user_name)
+    return render_template('display_name', user_name=user_name)
+
+@app.route('/api/signup', methods=['POST'])
+def api_signup():
+    """_summary_
+
+    Returns:
+        _type_: _description_
+    """
+
+    data = request.get_json()
+    if not data:
+        return jsonify({"error": "Invalid JSON payload"}), 400
+
+    name = data.get('name').strip()
+    email = data.get('email').strip()
+    password = data.get('password').strip()
+
+    if not email or not password:
+        return jsonify({"error": "Email and password are required"}), 400
+
+    try:
+        user = auth.create_user(
+            email=email,
+            password=password,
+            display_name=name
+        )
+        db.collection('users').document(user.uid).set({
+            'name': name,
+            'email': email,
+            'ridesPosted': [],
+            'ridesJoined': [],
+            'ridesRequested': []
+        })
+        return jsonify({"message": "Signup successful"}), 201
+
+    except EmailAlreadyExistsError:
+        return jsonify({"error": "The email entered already exists."}), 400
+    except FirebaseError:
+        return jsonify({"error": "Signup failed, please try again."}), 500
+
+@app.route('/api/logout', methods=['POST'])
+def api_logout():
+    """_summary_
+
+    Returns:
+        _type_: _description_
+    """
+    session.pop('user', None)
+    response = jsonify({"message": "Logged out successfully"})
+    response.set_cookie('session', '', expires=0)
+    return response, 200
+
+@app.route('/api/add-car', methods=['POST'])
+@auth_required
+def api_add_car():
+    """_summary_
+
+    Returns:
+        _type_: _description_
+    """
+    data = request.get_json()
+    if not data:
+        return jsonify({"error": "Invalid JSON payload"}), 400
+
+    try:
+        is_primary = data.get('isPrimary')
+        if isinstance(is_primary, str):
+            is_primary = is_primary.strip().lower() == "true"
+        else:
+            is_primary = bool(is_primary)
+
+        car_details = {
+            'make': data.get('make'),
+            'model': data.get('model'),
+            'licensePlate': data.get('licensePlate'),
+            'vin': data.get('vin'),
+            'year': int(data.get('year')),
+            'color': data.get('color'),
+            'isPrimary': is_primary
+        }
+
+        user_id = session['user'].get('uid')
+        cars_ref = db.collection('users').document(user_id).collection('cars')
+
+        if is_duplicate_car(db, user_id, car_details):
+            return jsonify({"error": "Duplicate car detected"}), 400
+
+        # If the new car is marked as primary, unset any existing primary car.
+        if is_primary:
+            existing_primary_cars = cars_ref.where('isPrimary', '==', True).stream()
+            for car in existing_primary_cars:
+                cars_ref.document(car.id).update({'isPrimary': False})
+
+        cars_ref.document().set(car_details)
+
+        return jsonify({"message": "Car added successfully", "car": car_details}), 201
+
+    except FirebaseError as e:
+        # Return a 500 error if something went wrong with Firebase.
+        return jsonify({"error": "Failed to add car. Please try again.", "details": str(e)}), 500
+    except Exception as e:
+        # Catch-all for any other unexpected exceptions.
+        return jsonify({"error": "An unexpected error occurred.", "details": str(e)}), 500
+
+@app.route('/api/post-ride', methods=['POST'])
+@auth_required
+def api_post_ride():
+    """_summary_
+
+    Returns:
+        _type_: _description_
+    """
+    data = request.get_json()
+    if not data:
+        return jsonify({"error": "Invalid JSON payload"}), 400
+
+    owner_id = session['user'].get('uid')
+    owner_name = session['user'].get('name')
+
+    try:
+        # Build ride details from JSON payload.
+        ride_details = {
+            "from": data.get('from'),
+            "to": data.get('to'),
+            "date": data.get('date'),
+            "departureTime": data.get('departure_time'),
+            "maxPassengers": int(data.get('max_passengers')),
+            "cost": float(data.get('cost'))
+        }
+
+        # Generate new ride document with an auto-generated ID.
+        ride_ref = db.collection('rides').document()
+        ride_id = ride_ref.id
+
+        # Get the user document from Firestore.
+        user_ref = db.collection('users').document(owner_id)
+        user_doc = user_ref.get()
+        user_data = user_doc.to_dict() if user_doc.exists else {}
+        rides_posted = user_data.get('ridesPosted', [])
+
+        if is_duplicate_ride(db, rides_posted, ride_details):
+            return jsonify({"error": "Duplicate ride post detected"}), 400
+
+        # Create the ride data (car details can be updated later).
+        ride_data = {
+            'ownerID': owner_id,
+            'ownerName': owner_name,
+            'from': ride_details['from'],
+            'to': ride_details['to'],
+            'date': ride_details['date'],
+            'departureTime': ride_details['departureTime'],
+            'maxPassengers': ride_details['maxPassengers'],
+            'cost': ride_details['cost'],
+            'currentPassengers': [],
+            'status': 'open',
+            'carModel': '',
+            'licensePlate': '',
+            'carVIN': ''
+        }
+
+        # Save the ride data to Firestore.
+        ride_ref.set(ride_data)
+
+        # Append the new ride ID to the user's posted rides and update Firestore.
+        rides_posted.append(ride_id)
+        user_ref.update({'ridesPosted': rides_posted})
+
+        return jsonify({"message": "Ride posted successfully", "ride": ride_data}), 201
+
+    except FirebaseError as e:
+        return jsonify({"error": "Failed to post ride, please try again.", "details": str(e)}), 500
+    except Exception as e:
+        return jsonify({"error": "An unexpected error occurred.", "details": str(e)}), 500
+
+@app.route('/api/home', methods=['GET'])
+@auth_required
+def api_home():
+    """_summary_
+
+    Returns:
+        _type_: _description_
+    """
+    # Access the session cookie (or any cookie sent by the client)
+    # cookie_data = request.cookies.get('session')
+    # print("Session cookie received:", cookie_data)
+
+    # Also, you can access your Flask session data
+    user = session.get('user', {})
+    user_name = user.get('name', 'Guest')
+    print(session)
+
+    return jsonify({"message": f"Welcome {user_name}!"}), 200
 
 if __name__ == "__main__":
     app.run(host='0.0.0.0', port=8090, debug=True)
