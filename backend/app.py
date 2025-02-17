@@ -282,12 +282,23 @@ def post_ride():
             rides_posted.append(ride_id)
             user_ref.update({'ridesPosted': rides_posted})
 
-            return jsonify({"message": "Ride posted successfully", "ride": ride_data}), 201
+            return redirect(url_for('view_ride_offer'))
         except FirebaseError:
             return render_template('ridePost.html', error="Please try again.")
 
     return render_template('ridePost.html')
-
+@app.route('/view-rides', methods = ['GET'])
+@auth_required
+def view_ride_offer():
+    """
+    Renders the ride offers page
+    """
+    try:
+        rides_ref = db.collection('rides').stream()
+        rides = [{"id": ride.id, **ride.to_dict()} for ride in rides_ref]
+        return render_template('rideOffers.html', rides=rides)
+    except FirebaseError:
+        return render_template('rideOffers.html', error = "Error fetching data")
 @app.route('/home')
 @auth_required
 def home():
