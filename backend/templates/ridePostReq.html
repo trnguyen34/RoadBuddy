@@ -1,0 +1,101 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Request a Ride</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      margin: 20px;
+    }
+    .form-container {
+      max-width: 400px;
+      margin: 0 auto;
+      padding: 20px;
+      border: 1px solid #ccc;
+      border-radius: 10px;
+      box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+    }
+    input, select, button {
+      width: 100%;
+      padding: 10px;
+      margin-bottom: 15px; 
+      border: 1px solid #ccc;
+      border-radius: 5px;
+      box-sizing: border-box; 
+    }
+    label {
+      display: block;
+      margin-bottom: 5px;
+      font-weight: bold;
+    }
+    button {
+      background-color: #007BFF;
+      color: #fff;
+      font-size: 16px;
+      cursor: pointer;
+    }
+    button:hover {
+      background-color: #0056b3;
+    }
+    .error {
+      color: red;
+      margin-bottom: 15px;
+    }
+  </style>
+</head>
+<body>
+  <div class="form-container">
+    <h2>Request a Ride</h2>
+    {% if error %}
+      <p class="error">{{ error }}</p>
+    {% endif %}
+    <form action="/post-ride-request" method="POST" id="postRideForm" onsubmit="return validateForm()">
+      <label for="from">From</label>
+      <input type="text" id="from" name="from" placeholder="Enter starting location" value="{{ request.form.from }}" required>
+
+      <label for="to">To</label>
+      <input type="text" id="to" name="to" placeholder="Enter destination" value="{{ request.form.to }}" required>
+
+      <label for="date">Date</label>
+      <input type="date" id="date" name="date" value="{{ request.form.date }}" required>
+
+      <label for="departure_time">Departure Time</label>
+      <input type="time" id="departure_time" name="departure_time" value="{{ request.form.departure_time }}" required>
+
+      <label for="num_passengers">Number of Passengers</label>
+      <input type="number" id="num_passengers" name="num_passengers" placeholder="Enter number of passengers" min="1" value="{{ request.form.number_of_passengers }}" required>
+
+      <button type="submit">Request Ride</button>
+    </form>
+  </div>
+
+  <script>
+    function validateForm() {
+      // Get the values from the form
+      const from = document.getElementById('from').value;
+      const to = document.getElementById('to').value;
+      const date = document.getElementById('date').value;
+      const departureTime = document.getElementById('departure_time').value;
+      const numPassengers = document.getElementById('num_passengers').value;
+      const cost = document.getElementById('cost').value;
+
+      // Check for valid number of passengers
+      if (numPassengers < 1 || isNaN(numPassengers)) {
+        alert("Number of passengers must be a valid number greater than 0.");
+        return false;
+      }
+
+      // Check for valid cost value
+      if (cost < 0 || isNaN(cost)) {
+        alert("Cost must be a valid number greater than or equal to 0.");
+        return false;
+      }
+
+      // Submit form
+      return true;
+    }
+  </script>
+</body>
+</html>
