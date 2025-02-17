@@ -299,7 +299,7 @@ def view_ride_offer():
         return render_template('rideOffers.html', rides=rides)
     except FirebaseError:
         return render_template('rideOffers.html', error = "Error fetching data")
-    
+
 @app.route('/post-ride-request', methods=['GET', 'POST'])
 @auth_required
 def post_ride_request():
@@ -374,7 +374,7 @@ def view_ride_request():
         return render_template('rideRequests.html', rides=rides)
     except FirebaseError:
         return render_template('rideRequests.html', error = "Error fetching data")
-    
+
 @app.route('/home')
 @auth_required
 def home():
