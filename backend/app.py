@@ -10,8 +10,9 @@ from firebase_admin import credentials, firestore, auth
 from firebase_admin.auth import InvalidIdTokenError, EmailAlreadyExistsError
 from firebase_admin.exceptions import FirebaseError
 
-from utils import is_duplicate_car
-from utils import is_duplicate_ride
+from utils import (
+    is_duplicate_car, is_duplicate_ride
+)
 
 app = Flask(__name__)
 app.secret_key = os.getenv('SECRET_KEY')
