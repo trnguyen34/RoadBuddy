@@ -310,10 +310,6 @@ def post_ride_request():
     ride information to Firestore. Updates the user's profile with
     the posted ride ID. For GET requests, renders the request posting form.
 
-    Returns:
-        Response: JSON response with the request details and a success message (status 201)
-        for successful POST requests, or renders the requests posting form (status 200).
-        On error, renders the form with an error message.
     """
     if request.method == 'POST':
         owner_id = session['user'].get('uid')
@@ -359,12 +355,26 @@ def post_ride_request():
             rides_request_posted.append(ride_request_id)
             user_ref.update({'ridesPosted': rides_request_posted})
 
-            return jsonify({"message": "Request posted successfully", "ride": ride_data}), 201
+            return redirect(url_for('view_ride_request'))
         except FirebaseError:
             return render_template('ridePostReq.html', error="Please try again.", **request.form)
 
     # Render the form for GET requests
     return render_template('ridePostReq.html')
+
+@app.route('/view-rides-req', methods = ['GET'])
+@auth_required
+def view_ride_request():
+    """
+    Renders the ride request page
+    """
+    try:
+        rides_ref = db.collection('ride_requests').stream()
+        rides = [{"id": ride.id, **ride.to_dict()} for ride in rides_ref]
+        return render_template('rideRequests.html', rides=rides)
+    except FirebaseError:
+        return render_template('rideRequests.html', error = "Error fetching data")
+    
 @app.route('/home')
 @auth_required
 def home():

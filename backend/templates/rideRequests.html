@@ -1,0 +1,51 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Available Rides</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 20px;
+        }
+        .ride-container {
+            max-width: 600px;
+            margin: 0 auto;
+        }
+        .ride {
+            border: 1px solid #ccc;
+            padding: 15px;
+            border-radius: 10px;
+            margin-bottom: 10px;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+        }
+        .ride h3 {
+            margin: 0;
+        }
+        .error {
+            color: red;
+        }
+    </style>
+</head>
+<body>
+    <div class="ride-container">
+        <h2>Available Rides</h2>
+        {% if error %}
+            <p class="error">{{ error }}</p>
+        {% elif rides %}
+            {% for ride in rides %}
+                <div class="ride">
+                    <h3>{{ ride.from }} → {{ ride.to }}</h3>
+                    <p><strong>Date:</strong> {{ ride.date }}</p>
+                    <p><strong>Departure Time:</strong> {{ ride.departureTime }}</p>
+                    <p><strong>Cost:</strong> ${{ ride.cost }}</p>
+                    <p><strong>Num Passengers:</strong> {{ ride.numPassengers }}</p>
+                </div>
+            {% endfor %}
+        {% else %}
+            <p>No rides available at the moment.</p>
+        {% endif %}
+    </div>
+</body>
+</html>
