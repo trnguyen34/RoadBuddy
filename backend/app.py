@@ -1,6 +1,7 @@
 from datetime import timedelta
 from functools import wraps
 import os
+import stripe
 from flask import (
     Flask, redirect, render_template, request,
     make_response, session, url_for, jsonify
@@ -30,6 +31,13 @@ app.config['SESSION_COOKIE_SAMESITE'] = 'Lax'
 cred = credentials.Certificate("firebase-config.json")
 firebase_admin.initialize_app(cred)
 db = firestore.client()
+
+stripe_keys = {
+    "secret_key": os.environ["STRIPE_SECRET_KEY"],
+    "publishable_key": os.environ["STRIPE_PUBLISHABLE_KEY"],
+}
+
+stripe.api_key = stripe_keys["secret_key"]
 
 def auth_required(f):
     """
@@ -496,6 +504,91 @@ def api_add_payment_method():
         return jsonify({"error": "Failed to add card. Please try again.", "details": str(e)}), 500
     except Exception as e:
         return jsonify({"error": "An unexpected error occurred.", "details": str(e)}), 500
+
+@app.route('/api/request-ride', methods=['POST'])
+@auth_required
+def api_request_ride():
+    """_summary_
+
+    Returns:
+        _type_: _description_
+    """
+    data = request.get_json()
+
+    if not data:
+        return jsonify({"error": "Invalid JSON payload"}), 400
+
+    required_fields = [
+      'rideId',
+      'amount',
+      'cardToken',
+    ]
+
+    missing_fields = [field for field in required_fields if field not in data or not data[field]]
+    if missing_fields:
+        return jsonify({
+            "error": f'Missing required field(s): {", ".join(missing_fields)}'
+        }), 400
+
+    amount_dollars = data.get('amount')
+    try:
+        amount_cents = int(float(amount_dollars) * 100)
+    except ValueError:
+        return jsonify({"error": "Invalid amount format."}), 400
+
+    try:
+        charge = stripe.Charge.create(
+            amount=amount_cents,
+            currency="usd",
+            description="Charge for ride request",
+            source=data.get('cardToken')
+        )
+    except stripe.error.StripeError as e:
+        return jsonify({"error": f"Charge creation failed: {str(e)}"}), 400
+
+    return jsonify({"message": "Payment successful.", "charge": charge}), 200
+
+@app.route('/api/charge', methods=['POST'])
+@auth_required
+def api_charge():
+    """_summary_
+
+    Returns:
+        _type_: _description_
+    """
+    data = request.get_json()
+
+    if not data:
+        return jsonify({"error": "Invalid JSON payload"}), 400
+
+    required_fields = [
+        'amount',
+        'cardToken'
+    ]
+
+    missing_fields = [field for field in required_fields if field not in data or not data[field]]
+    if missing_fields:
+        return jsonify({
+            "error": f'Missing required field(s): {", ".join(missing_fields)}'
+        }), 400
+
+    amount_dollars = data.get('amount')
+    try:
+        amount_cents = int(float(amount_dollars) * 100)
+    except ValueError:
+        return jsonify({"error": "Invalid amount format."}), 400
+
+    try:
+        charge = stripe.Charge.create(
+            amount=amount_cents,
+            currency="usd",
+            description="Charge for ride request",
+            source=data.get('cardToken')
+        )
+    except stripe.error.StripeError as e:
+        return jsonify({"error": f"Charge creation failed: {str(e)}"}), 400
+
+    return jsonify({"message": "Payment successful.", "charge": charge}), 200
 
 @app.route('/api/home', methods=['GET'])
 @auth_required

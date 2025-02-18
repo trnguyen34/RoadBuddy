@@ -1,8 +1,11 @@
-// firebase-config.js
-
-// Import the functions you need from the Firebase SDKs
+// firebase-config.ts
 import { initializeApp } from "firebase/app";
-import { getAuth, GoogleAuthProvider } from "firebase/auth";
+import { 
+  GoogleAuthProvider, 
+  initializeAuth, 
+  getReactNativePersistence 
+} from "firebase/auth";
+import ReactNativeAsyncStorage from '@react-native-async-storage/async-storage';
 import { getFirestore } from "firebase/firestore";
 
 // Your web app's Firebase configuration
@@ -19,8 +22,12 @@ const firebaseConfig = {
 // Initialize Firebase
 const app = initializeApp(firebaseConfig);
 
-// Initialize Firebase Authentication and get a reference to the service
-const auth = getAuth(app);
+// Initialize Firebase Auth with React Native persistence
+const auth = initializeAuth(app, {
+  persistence: getReactNativePersistence(ReactNativeAsyncStorage)
+});
+
+// Initialize a Google Auth Provider
 const provider = new GoogleAuthProvider();
 
 // Initialize Cloud Firestore and get a reference to the service
