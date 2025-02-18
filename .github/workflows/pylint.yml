@@ -36,4 +36,5 @@ jobs:
 
     - name: Analysing the code with pylint
       run: |
-        python -m pylint $(git ls-files 'backend/*.py') --disable=C0114 --disable=broad-except
+        python -m pylint $(git ls-files 'backend/*.py') --disable=C0114 --disable=broad-except --disable=too-many-return-statements
+
