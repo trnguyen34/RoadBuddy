@@ -33,8 +33,8 @@ firebase_admin.initialize_app(cred)
 db = firestore.client()
 
 stripe_keys = {
-    "secret_key": os.environ["STRIPE_SECRET_KEY"],
-    "publishable_key": os.environ["STRIPE_PUBLISHABLE_KEY"],
+    "secret_key": "sk_test_51MjBbNDiM3EAos9ofwDzdsbJk97A0HgXhnhkSaBUDaISKbxxURNFZtXWIDST7ZWDWrCb4ZihCO2eLNZWjru4VKx000b02YyMeY",
+    "publishable_key": "pk_test_51MjBbNDiM3EAos9ocETiK2jsHzePLkUvL95YrsEwpCgThRFn4EI0eFyNl55l7jsJzEHoHbGXOyfDm9HYTLKLsKHw00jukt7PIy",
 }
 
 stripe.api_key = stripe_keys["secret_key"]
@@ -537,16 +537,56 @@ def api_request_ride():
         return jsonify({"error": "Invalid amount format."}), 400
 
     try:
-        charge = stripe.Charge.create(
-            amount=amount_cents,
-            currency="usd",
-            description="Charge for ride request",
-            source=data.get('cardToken')
-        )
-    except stripe.error.StripeError as e:
-        return jsonify({"error": f"Charge creation failed: {str(e)}"}), 400
+        ride_id = data.get('rideId')
+        ride_doc_ref = db.collection('rides').document(ride_id)
+        ride_doc = ride_doc_ref.get()
 
-    return jsonify({"message": "Payment successful.", "charge": charge}), 200
+        if not ride_doc.exists:
+            return jsonify({"error": "Ride not found"}), 404
+
+        user_id = session.get('user', {}).get('uid')
+        ride_owner_id = ride_doc.get('ownerID')
+        if ride_owner_id == user_id:
+            return jsonify({"error": "You cannot book your own ride"}), 400
+
+        max_passengers = ride_doc.get('maxPassengers')
+        curr_passengers = ride_doc.get('currentPassengers')
+        num_passengers = len(curr_passengers)
+
+        if max_passengers == num_passengers:
+            return jsonify({"error": "Ride is full"}), 400
+
+        if user_id in curr_passengers:
+            return jsonify({"error": "User already requested this ride."}), 400
+
+        try:
+            charge = stripe.Charge.create(
+                amount=amount_cents,
+                currency="usd",
+                description="Charge for ride request",
+                source=data.get('cardToken')
+            )
+        except stripe.error.StripeError as e:
+            return jsonify({"error": f"Charge creation failed: {str(e)}"}), 400
+
+        curr_passengers.append(user_id)
+        ride_doc_ref.update({'currentPassengers': curr_passengers})
+
+        user_doc_ref = db.collection('users').document(user_id)
+        user_doc = user_doc_ref.get()
+        rides_joined = user_doc.get('ridesJoined')
+        rides_joined.append(ride_id)
+        user_doc_ref.update({'ridesJoined': rides_joined})
+
+        return jsonify({"message": "Payment successful.", "charge": charge}), 200
+
+    except FirebaseError as e:
+        return jsonify({
+            "error": "Failed to look up ride with the given ride ID", 
+            "details": str(e)
+        }), 500
+    except Exception as e:
+        return jsonify({"error": "An unexpected error occurred.", "details": str(e)}), 500
 
 @app.route('/api/charge', methods=['POST'])
 @auth_required
@@ -605,7 +645,7 @@ def api_home():
     # Also, you can access your Flask session data
     user = session.get('user', {})
     user_name = user.get('name', 'Guest')
-    print_json(session)
+    print_json(user)
 
     return jsonify({"message": f"Welcome {user_name}!"}), 200
 
