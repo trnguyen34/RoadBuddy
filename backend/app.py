@@ -13,8 +13,7 @@ from firebase_admin.exceptions import FirebaseError
 from flask_cors import CORS
 
 from utils import (
-    is_duplicate_car, is_duplicate_ride, validate_payment_data,
-    is_duplicate_card, print_json, safe_int, is_valid_boolean
+    is_duplicate_car, is_duplicate_ride, print_json
 )
 
 app = Flask(__name__)
@@ -419,92 +418,6 @@ def api_post_ride():
     except Exception as e:
         return jsonify({"error": "An unexpected error occurred.", "details": str(e)}), 500
 
-@app.route('/api/add-payment-method', methods=['POST'])
-@auth_required
-def api_add_payment_method():
-    """_summary_
-
-    Returns:
-        _type_: _description_
-    """
-    data = request.get_json()
-
-    if not data:
-        return jsonify({"error": "Invalid JSON payload"}), 400
-
-    required_fields = [
-        'cardNumber',
-        'cardholderName',
-        'expMonth',
-        'expYear',
-        'cvv',
-        'billingAddress',
-        'isPrimary'
-    ]
-
-    # Check for missing fields
-    missing_fields = [field for field in required_fields if field not in data or not data[field]]
-    if missing_fields:
-        return jsonify({
-            "error": f'Missing required field(s): {", ".join(missing_fields)}'
-        }), 400
-
-    is_primary = data.get('isPrimary')
-
-    if not is_valid_boolean(is_primary):
-        return jsonify({"error": "Invalid value for 'isPrimary'. Must be true or false."}), 400
-
-    is_primary = bool(is_primary)
-
-    card_details = {
-        'cardNumber': data.get('cardNumber'),
-        'cardholderName': data.get('cardholderName'),
-        'expMonth': safe_int(data.get('expMonth')),
-        'expYear': safe_int(data.get('expYear')),
-        'cvv': safe_int(data.get('cvv')),
-        'billingAddress': data.get('billingAddress'),
-        'isPrimary': is_primary
-    }
-
-    if None in (card_details['expMonth'], card_details['expYear'], card_details['cvv']):
-        return jsonify({"error": "One or more required numeric fields are invalid."}), 400
-
-    validation_errors = validate_payment_data(card_details)
-    if validation_errors:
-        return jsonify({
-            'error': "; ".join(validation_errors)
-        }), 400
-
-    try:
-        user_id = session['user'].get('uid')
-        card_ref = db.collection('users').document(user_id).collection('cards')
-
-        if is_duplicate_card(db, user_id, card_details):
-            return jsonify({"error": "Duplicate card number detected"}), 400
-
-        if is_primary:
-            existing_primary_cards = card_ref.where('isPrimary', '==', True).stream()
-            for card in existing_primary_cards:
-                card_ref.document(card.id).update({'isPrimary': False})
-
-        card_ref.document().set(card_details)
-
-        return jsonify({
-            'message': 'Payment method added successfully!',
-            'payment_method': {
-                'cardNumber': data['cardNumber'][-4:],
-                'cardholderName': data['cardholderName'],
-                'expMonth': data['expMonth'],
-                'expYear': data['expYear'],
-                'billingAddress': data['billingAddress'],
-                'isPrimary': data['isPrimary']
-            }
-        }), 201
-    except FirebaseError as e:
-        return jsonify({"error": "Failed to add card. Please try again.", "details": str(e)}), 500
-    except Exception as e:
-        return jsonify({"error": "An unexpected error occurred.", "details": str(e)}), 500
-
 @app.route('/api/request-ride', methods=['POST'])
 @auth_required
 def api_request_ride():
@@ -636,48 +549,6 @@ def create_payment_sheet():
     except Exception as e:
         return jsonify({"error": "An unexpected error occurred.", "details": str(e)}), 500
 
-
-@app.route('/api/charge', methods=['POST'])
-@auth_required
-def api_charge():
-    """_summary_
-
-    Returns:
-        _type_: _description_
-    """
-    data = request.get_json()
-
-    if not data:
-        return jsonify({"error": "Invalid JSON payload"}), 400
-
-    required_fields = [
-        'amount',
-        'cardToken'
-    ]
-
-    missing_fields = [field for field in required_fields if field not in data or not data[field]]
-    if missing_fields:
-        return jsonify({
-            "error": f'Missing required field(s): {", ".join(missing_fields)}'
-        }), 400
-
-    amount_dollars = data.get('amount')
-    try:
-        amount_cents = int(float(amount_dollars) * 100)
-    except ValueError:
-        return jsonify({"error": "Invalid amount format."}), 400
-
-    try:
-        charge = stripe.Charge.create(
-            amount=amount_cents,
-            currency="usd",
-            description="Charge for ride request",
-            source=data.get('cardToken')
-        )
-    except stripe.error.StripeError as e:
-        return jsonify({"error": f"Charge creation failed: {str(e)}"}), 400
-
-    return jsonify({"message": "Payment successful.", "charge": charge}), 200
 
 @app.route('/api/home', methods=['GET'])
 @auth_required
