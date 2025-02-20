@@ -15,7 +15,7 @@ function RideOfferCreationScreen() {
             const message = event.nativeEvent.data;
             switch (message) {
                 case 'navigateHome':
-                  navigation.navigate('Home');
+                  
                   break;
                 case 'navigateSignUp':
                     navigation.navigate('Signup');
