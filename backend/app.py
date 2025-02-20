@@ -463,7 +463,7 @@ def api_request_ride():
 
     except FirebaseError as e:
         return jsonify({
-            "error": "Failed to look up ride with the given ride ID", 
+            "error": "Failed to look up ride with the given ride ID",
             "details": str(e)
         }), 500
     except Exception as e:
@@ -546,6 +546,76 @@ def create_payment_sheet():
 
     except stripe.error.StripeError as e:
         return jsonify({"error": f"Stripe error: {str(e)}"}), 400
+    except Exception as e:
+        return jsonify({"error": "An unexpected error occurred.", "details": str(e)}), 500
+
+@app.route('/api/available-rides', methods=['GET'])
+@auth_required
+def get_all_rides():
+    """Fetch all available rides with status 'open'."""
+    user_id = session.get('user', {}).get('uid')
+    user_doc_ref = db.collection('users').document(user_id)
+    user_doc = user_doc_ref.get()
+    rides_joined = user_doc.get('ridesJoined')
+
+    try:
+        rides_ref = db.collection('rides').where('status', '==', 'open')
+        rides_docs = rides_ref.stream()
+
+        rides = []
+        for doc in rides_docs:
+            ride_data = doc.to_dict()
+            if ride_data['ownerID'] != user_id and doc.id not in rides_joined:
+                ride_data["id"] = doc.id
+                rides.append(ride_data)
+
+        return jsonify({"rides": rides}), 200
+
+    except Exception as e:
+        return jsonify({"error": "Failed to fetch rides", "details": str(e)}), 500
+
+@app.route('/api/rides/<ride_id>', methods=['GET'])
+@auth_required
+def get_ride_details(ride_id):
+    """Fetch a ride with the given ride id"""
+    try:
+        ride_doc_ref = db.collection('rides').document(ride_id)
+        ride_doc = ride_doc_ref.get()
+        if not ride_doc.exists:
+            return jsonify({"error": "Ride not found"}), 404
+
+        ride_data = ride_doc.to_dict()
+        ride_data["id"] = ride_id
+        return jsonify({"ride": ride_data}), 200
+
+    except Exception as e:
+        return jsonify({"error": "Failed to fetch ride details", "details": str(e)}), 500
+
+@app.route('/api/coming-up-rides', methods=['GET'])
+@auth_required
+def get_coming_up_rides():
+    """Fetch all the user coming up rides"""
+    user_id = session.get('user', {}).get('uid')
+    try:
+        user_doc_ref = db.collection('users').document(user_id)
+        user_doc = user_doc_ref.get()
+        rides_joined = user_doc.get('ridesJoined')
+
+        rides = []
+        for ride_id in rides_joined:
+            ride_doc_ref = db.collection('rides').document(ride_id)
+            ride_doc = ride_doc_ref.get()
+            ride_data = ride_doc.to_dict()
+            ride_data["id"] = ride_doc.id
+            rides.append(ride_data)
+
+        return jsonify({"rides": rides}), 200
+
+    except FirebaseError as e:
+        return jsonify({
+            "error": "Failed to fetech coming up rides.",
+            "details": str(e)
+        }), 500
     except Exception as e:
         return jsonify({"error": "An unexpected error occurred.", "details": str(e)}), 500
 
