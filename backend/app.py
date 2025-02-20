@@ -418,6 +418,7 @@ def api_post_ride():
     except Exception as e:
         return jsonify({"error": "An unexpected error occurred.", "details": str(e)}), 500
 
+
 @app.route('/api/request-ride', methods=['POST'])
 @auth_required
 def api_request_ride():
@@ -434,7 +435,7 @@ def api_request_ride():
     required_fields = [
       'rideId',
     ]
-
+    
     missing_fields = [field for field in required_fields if field not in data or not data[field]]
     if missing_fields:
         return jsonify({
@@ -548,7 +549,6 @@ def create_payment_sheet():
         return jsonify({"error": f"Stripe error: {str(e)}"}), 400
     except Exception as e:
         return jsonify({"error": "An unexpected error occurred.", "details": str(e)}), 500
-
 
 @app.route('/api/home', methods=['GET'])
 @auth_required
