@@ -418,7 +418,6 @@ def api_post_ride():
     except Exception as e:
         return jsonify({"error": "An unexpected error occurred.", "details": str(e)}), 500
 
-
 @app.route('/api/request-ride', methods=['POST'])
 @auth_required
 def api_request_ride():
