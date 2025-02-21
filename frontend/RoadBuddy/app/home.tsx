@@ -37,6 +37,16 @@ const MainScreen = () => {
       <TouchableOpacity onPress={handleLogout} style={[styles.button, styles.logoutButton]}>
         <Text style={{ color: 'white' }}>Logout</Text>
       </TouchableOpacity>
+
+      {/* Bottom Left Button */}
+      <TouchableOpacity onPress={() => handleButtonPress('Messages')} style={[styles.button, styles.bottomLeftButton]}>
+        <Text style={{ color: 'black' }}>M</Text>
+      </TouchableOpacity>
+
+      {/* Bottom Right Button */}
+      <TouchableOpacity onPress={() => handleButtonPress('Post Ride/Request')} style={[styles.bottomRightButton, styles.bottomRightButton]}>
+        <Text style={{ color: 'black' }}>P</Text>
+      </TouchableOpacity>
       <View style={styles.footer}>
       </View>
     </ScrollView>
@@ -126,6 +136,26 @@ const styles = StyleSheet.create({
   footerIcon: {
     width: 30,
     height: 30,
+  },
+  bottomLeftButton: {
+    position: 'absolute',
+    bottom: 20,
+    left: 20,
+    backgroundColor: '#DFD8CA',
+    padding: 15,
+    borderRadius: 100,
+    width: 50,
+    alignItems: 'center',
+  },
+  bottomRightButton: {
+    position: 'absolute',
+    bottom: 20,
+    right: 20,
+    backgroundColor: '#DFD8CA',
+    padding: 15,
+    borderRadius: 100,
+    width: 50,
+    alignItems: 'center',
   },
 });
 
