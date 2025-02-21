@@ -51,6 +51,7 @@ export default function Home() {
       <Button title="Comming Up Rides" onPress={() => router.push("/cominguprides")} />
       <Button title="Add Vehicle" onPress={() => router.push("/addcar")} />
       <Button title="Post Ride" onPress={() => router.push("/postride")} />
+      <Button title="Request Ride" onPress={() => router.push("/requestride")} />
       <Button title="Logout" onPress={() => router.replace("/logout")} />
     </View>
   );

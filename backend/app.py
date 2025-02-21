@@ -449,7 +449,6 @@ def api_request_ride():
         user_id = session.get('user', {}).get('uid')
 
         curr_passengers = ride_doc.get('currentPassengers')
-
         curr_passengers.append(user_id)
         ride_doc_ref.update({'currentPassengers': curr_passengers})
 
