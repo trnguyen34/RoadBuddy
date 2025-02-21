@@ -1,6 +1,7 @@
 from datetime import timedelta
 from functools import wraps
 import os
+import stripe
 from flask import (
     Flask, redirect, render_template, request,
     make_response, session, url_for, jsonify
@@ -12,8 +13,7 @@ from firebase_admin.exceptions import FirebaseError
 from flask_cors import CORS
 
 from utils import (
-    is_duplicate_car, is_duplicate_ride, validate_payment_data,
-    is_duplicate_card, print_json, safe_int, is_valid_boolean
+    is_duplicate_car, is_duplicate_ride, print_json
 )
 
 app = Flask(__name__)
@@ -30,6 +30,13 @@ app.config['SESSION_COOKIE_SAMESITE'] = 'Lax'
 cred = credentials.Certificate("firebase-config.json")
 firebase_admin.initialize_app(cred)
 db = firestore.client()
+
+stripe_keys = {
+    "secret_key": os.environ["STRIPE_SECRET_KEY"],
+    "publishable_key": os.environ["STRIPE_PUBLISHABLE_KEY"],
+}
+
+stripe.api_key = stripe_keys["secret_key"]
 
 def auth_required(f):
     """
@@ -411,9 +418,9 @@ def api_post_ride():
     except Exception as e:
         return jsonify({"error": "An unexpected error occurred.", "details": str(e)}), 500
 
-@app.route('/api/add-payment-method', methods=['POST'])
+@app.route('/api/request-ride', methods=['POST'])
 @auth_required
-def api_add_payment_method():
+def api_request_ride():
     """_summary_
 
     Returns:
@@ -425,75 +432,120 @@ def api_add_payment_method():
         return jsonify({"error": "Invalid JSON payload"}), 400
 
     required_fields = [
-        'cardNumber',
-        'cardholderName',
-        'expMonth',
-        'expYear',
-        'cvv',
-        'billingAddress',
-        'isPrimary'
+      'rideId',
     ]
 
-    # Check for missing fields
     missing_fields = [field for field in required_fields if field not in data or not data[field]]
     if missing_fields:
         return jsonify({
             "error": f'Missing required field(s): {", ".join(missing_fields)}'
         }), 400
 
-    is_primary = data.get('isPrimary')
+    try:
+        ride_id = data.get('rideId').strip()
+        ride_doc_ref = db.collection('rides').document(ride_id)
+        ride_doc = ride_doc_ref.get()
 
-    if not is_valid_boolean(is_primary):
-        return jsonify({"error": "Invalid value for 'isPrimary'. Must be true or false."}), 400
+        user_id = session.get('user', {}).get('uid')
 
-    is_primary = bool(is_primary)
+        curr_passengers = ride_doc.get('currentPassengers')
 
-    card_details = {
-        'cardNumber': data.get('cardNumber'),
-        'cardholderName': data.get('cardholderName'),
-        'expMonth': safe_int(data.get('expMonth')),
-        'expYear': safe_int(data.get('expYear')),
-        'cvv': safe_int(data.get('cvv')),
-        'billingAddress': data.get('billingAddress'),
-        'isPrimary': is_primary
-    }
+        curr_passengers.append(user_id)
+        ride_doc_ref.update({'currentPassengers': curr_passengers})
 
-    if None in (card_details['expMonth'], card_details['expYear'], card_details['cvv']):
-        return jsonify({"error": "One or more required numeric fields are invalid."}), 400
+        user_doc_ref = db.collection('users').document(user_id)
+        user_doc = user_doc_ref.get()
+        rides_joined = user_doc.get('ridesJoined')
+        rides_joined.append(ride_id)
+        user_doc_ref.update({'ridesJoined': rides_joined})
 
-    validation_errors = validate_payment_data(card_details)
-    if validation_errors:
+        return jsonify({"message": "User has been used to the ride."}), 201
+
+    except FirebaseError as e:
         return jsonify({
-            'error': "; ".join(validation_errors)
-        }), 400
+            "error": "Failed to look up ride with the given ride ID", 
+            "details": str(e)
+        }), 500
+    except Exception as e:
+        return jsonify({"error": "An unexpected error occurred.", "details": str(e)}), 500
+
+@app.route('/api/payment-sheet', methods=['POST'])
+@auth_required
+def create_payment_sheet():
+    """_summary_
+
+    Returns:
+        _type_: _description_
+    """
+    user_id = session.get('user', {}).get('uid')
+    if not user_id:
+        return jsonify({"error": "User not authenticated"}), 401
+
+    data = request.get_json()
+    if not data:
+        return jsonify({"error": "Invalid JSON payload"}), 400
+
+    ride_id = data.get('rideId').strip()
+    amount_dollars = data.get('amount')
+    if not ride_id or not amount_dollars:
+        return jsonify({"error": "Missing required field(s): rideId and amount are required."}), 400
+
+    ride_doc_ref = db.collection('rides').document(ride_id)
+    ride_doc = ride_doc_ref.get()
+
+    if not ride_doc.exists:
+        return jsonify({"error": "Ride not found"}), 404
+
+    ride_owner_id = ride_doc.get('ownerID')
+    if ride_owner_id == user_id:
+        return jsonify({"error": "You cannot book your own ride"}), 400
+
+    max_passengers = ride_doc.get('maxPassengers')
+    curr_passengers = ride_doc.get('currentPassengers') or []
+
+    if len(curr_passengers) >= max_passengers:
+        return jsonify({"error": "Ride is full"}), 400
+
+    if user_id in curr_passengers:
+        return jsonify({"error": "User already requested this ride."}), 400
 
     try:
-        user_id = session['user'].get('uid')
-        card_ref = db.collection('users').document(user_id).collection('cards')
+        # Convert the amount from dollars to cents.
+        amount_cents = int(float(amount_dollars) * 100)
+    except ValueError:
+        return jsonify({"error": "Invalid amount format."}), 400
 
-        if is_duplicate_card(db, user_id, card_details):
-            return jsonify({"error": "Duplicate card number detected"}), 400
+    try:
+        stripe_customer_id = session.get('stripe_customer_id')
+        if not stripe_customer_id:
+            customer = stripe.Customer.create(
+                description=f"Customer for user {user_id} (Ride: {ride_id})",
+                metadata={'user_id': user_id}
+            )
+            stripe_customer_id = customer.id
+            session['stripe_customer_id'] = stripe_customer_id
 
-        if is_primary:
-            existing_primary_cards = card_ref.where('isPrimary', '==', True).stream()
-            for card in existing_primary_cards:
-                card_ref.document(card.id).update({'isPrimary': False})
+        ephemeral_key = stripe.EphemeralKey.create(
+            customer=stripe_customer_id,
+            stripe_version='2020-08-27'
+        )
 
-        card_ref.document().set(card_details)
+        payment_intent = stripe.PaymentIntent.create(
+            amount=amount_cents,
+            currency="usd",
+            customer=stripe_customer_id,
+            payment_method_types=["card"],
+            description="Payment for ride request"
+        )
 
         return jsonify({
-            'message': 'Payment method added successfully!',
-            'payment_method': {
-                'cardNumber': data['cardNumber'][-4:],
-                'cardholderName': data['cardholderName'],
-                'expMonth': data['expMonth'],
-                'expYear': data['expYear'],
-                'billingAddress': data['billingAddress'],
-                'isPrimary': data['isPrimary']
-            }
-        }), 201
-    except FirebaseError as e:
-        return jsonify({"error": "Failed to add card. Please try again.", "details": str(e)}), 500
+            "paymentIntent": payment_intent.client_secret,
+            "ephemeralKey": ephemeral_key.secret,
+            "customer": stripe_customer_id
+        }), 200
+
+    except stripe.error.StripeError as e:
+        return jsonify({"error": f"Stripe error: {str(e)}"}), 400
     except Exception as e:
         return jsonify({"error": "An unexpected error occurred.", "details": str(e)}), 500
 
@@ -512,7 +564,7 @@ def api_home():
     # Also, you can access your Flask session data
     user = session.get('user', {})
     user_name = user.get('name', 'Guest')
-    print_json(session)
+    print_json(user)
 
     return jsonify({"message": f"Welcome {user_name}!"}), 200
 

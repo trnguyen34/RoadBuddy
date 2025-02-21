@@ -19,7 +19,7 @@ import axios from 'axios';
 import { router } from 'expo-router';
 import DateTimePicker from '@react-native-community/datetimepicker';
 import { BASE_URL } from "../configs/base-url";
-import { googlePlaceApi } from "../configs/api";
+import { googlePlaceApi } from "../configs/google-api";
 
 export default function PostRide() {
   const [fromAddress, setFromAddress] = useState('');
