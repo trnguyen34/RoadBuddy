@@ -75,10 +75,11 @@
         {% if error %}
             <p class="error">{{ error }}</p>
         {% endif %}
-        <form action="/signup" method="POST">
+        <form id="signup-form" action="/signup" method="POST">
             <div class="form-group">
                 <label for="name">Full Name</label>
                 <input type="text" id="name" name="name" placeholder="Enter your full name" required>
+                <p id="name-warning" style="color: red; display: none;">Full name must include at least two words.</p>
             </div>
             <div class="form-group">
                 <label for="email">Email</label>
@@ -87,9 +88,43 @@
             <div class="form-group">
                 <label for="password">Password</label>
                 <input type="password" id="password" name="password" placeholder="Enter a password" required>
+                <p id="password-warning" style="color: red; display: none;">Password must be at least 6 characters long.</p>
             </div>
             <button type="submit" class="submit-btn">Sign Up</button>
         </form>
     </div>
+
+    <script>
+        document.getElementById('signup-form').addEventListener('submit', function (e) {
+            const nameInput = document.getElementById('name');
+            const nameWarning = document.getElementById('name-warning');
+            const passwordInput = document.getElementById('password');
+            const passwordWarning = document.getElementById('password-warning');
+
+            let isValid = true;
+
+            // Validate full name (at least two space-separated words)
+            const fullNameParts = nameInput.value.trim().split(/\s+/);
+            if (fullNameParts.length < 2) {
+                nameWarning.style.display = 'block';
+                isValid = false;
+            } else {
+                nameWarning.style.display = 'none';
+            }
+
+            // Validate password (at least 6 characters)
+            if (passwordInput.value.length < 6) {
+                passwordWarning.style.display = 'block';
+                isValid = false;
+            } else {
+                passwordWarning.style.display = 'none';
+            }
+
+            // Check for input validity
+            if (!isValid) {
+                e.preventDefault();
+            }
+        });
+    </script>
 </body>
 </html>

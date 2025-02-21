@@ -145,8 +145,8 @@ def signup():
         email = request.form.get('email')
         password = request.form.get('password')
 
-        if not email or not password:
-            return render_template('signup.html', error="Email and password are required")
+        if len(password) < 6:
+            return render_template('signup.html', error="Password length must be greater than 6")
 
         try:
             user = auth.create_user(
