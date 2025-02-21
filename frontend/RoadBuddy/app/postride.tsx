@@ -52,7 +52,7 @@ export default function PostRide() {
   };
 
   // Helper function for displaying month in this format MM-DD-YYYY
-  const formatDateForDisplay = (isoDate) => {
+  const formatDateForDisplay = (isoDate: string) => {
     const [year, month, day] = isoDate.split('-'); // Assuming "YYYY-MM-DD" format
     return `${month}-${day}-${year}`; // Convert to MM-DD-YYYY
   };
@@ -293,7 +293,6 @@ export default function PostRide() {
         style={styles.input}
         placeholder="Max Passengers"
         value={maxPassengers}
-        onChangeText={setMaxPassengers}
         keyboardType="numeric"
         maxLength={2}
         onChangeText={(text) => {
