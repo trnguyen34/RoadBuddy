@@ -1,5 +1,8 @@
 import React from 'react';
 import { View, Text, Image, TouchableOpacity, ScrollView, StyleSheet } from 'react-native';
+import { Dimensions } from 'react-native'; // for responsive styling
+
+const { width } = Dimensions.get('window');
 
 const MainScreen = () => {
   // Define a function for logout, for example
@@ -14,6 +17,7 @@ const MainScreen = () => {
 
   return (
     <ScrollView contentContainerStyle={styles.container}>
+      <View style={styles.backgroundRectangle} />
       <Text style={styles.header}>RoadBuddy</Text>
       <Image source={require('../assets/images/green-car.png')} style={styles.carImage} />
       <Text style={styles.welcome}>Hello, User</Text>
@@ -34,7 +38,6 @@ const MainScreen = () => {
         <Text style={{ color: 'white' }}>Logout</Text>
       </TouchableOpacity>
       <View style={styles.footer}>
-
       </View>
     </ScrollView>
   );
@@ -47,39 +50,57 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     backgroundColor: '#f7f1e5',
   },
+  backgroundRectangle: {
+    position: 'absolute',
+    bottom: 0,
+    // left: 0,
+    width: '100%',
+    height: '70%',
+    backgroundColor: '#A09189',
+    borderTopLeftRadius: 150,
+    // borderBottomRightRadius: 50,
+    elevation: 0,
+  },    
   header: {
-    fontSize: 24,
-    fontWeight: 'bold',
-    color: '#5d4c42',
-    marginTop: 20,
-  },
-  carImage: {
-    width: 100,
-    height: 100,
     position: 'absolute',
     top: 20,
+    alignSelf: 'center',
+    fontSize: 28,
+    fontWeight: 'bold',
+    color: '#382f27',
+  },
+  carImage: {
+    width: 180,
+    height: 180,
+    position: 'absolute',
+    top: 120,
+    left: 50,
   },
   welcome: {
-    fontSize: 22,
+    fontSize: width * 0.08,
     fontWeight: 'bold',
     color: '#fff',
-    marginTop: 60,
+    marginTop: 170,
+    marginBottom: 20,
   },
   events: {
     color: '#f4f4f4',
-    marginTop: 20,
+    // marginTop: 10,
+    width: '70%',
   },
   eventItem: {
     borderBottomWidth: 1,
     borderBottomColor: '#ddd',
+    color: '#ddd',
     padding: 5,
-    margin: 20,
+    margin: 10,
+    // width: '100%',
   },
   buttons: {
     flexDirection: 'row',
     justifyContent: 'space-around',
     width: '100%',
-    marginTop: 40,
+    marginTop: 20,
   },
   button: {
     backgroundColor: 'white',

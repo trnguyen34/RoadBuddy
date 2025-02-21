@@ -149,7 +149,7 @@
 <body>
     <div class="container">
         <div class="header">RoadBuddy</div>
-        <img src="../images/green-car.svg" class="car-image" alt="Car">
+        <img src="../images/green-car.png" class="car-image" alt="Car">
         <div class="welcome">Hello, User</div>
         <div class="events">
             <div class="event-item">Upcoming Events</div>
@@ -171,14 +171,6 @@
         </div>
     </div>
     <script>
-        window.onload = function() {
-        var carImage = document.querySelector('.car-image'); // Get the image element by class name
-        if (carImage) {
-            console.log('Car image path:', carImage.src); // Print the path
-        } else {
-            console.log('Car image not found');
-        }
-        };
         function sendMessage(action) {
             window.ReactNativeWebView.postMessage(action);
         }

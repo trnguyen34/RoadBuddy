@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { View, Text, TextInput, TouchableOpacity, StyleSheet, Alert } from 'react-native';
+import { Image, View, Text, TextInput, TouchableOpacity, StyleSheet, Alert } from 'react-native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import {
     createStaticNavigation,
@@ -29,10 +29,12 @@ const LoginScreen = () => {
 
     return (
         <View style={styles.container}>
+            <View style={styles.backgroundRectangle} />
             <TouchableOpacity onPress={() => console.log('Back button pressed')} style={styles.backButton}>
                 <Text>&#8592;</Text>
             </TouchableOpacity>
             <Text style={styles.title}>RoadBuddy</Text>
+            <Image source={require('../assets/images/destination.png')} style={styles.destinationImage} />
             <View style={styles.loginContainer}>
                 <Text style={styles.header}>Sign In</Text>
                 <TextInput
@@ -71,7 +73,19 @@ const styles = StyleSheet.create({
         justifyContent: 'center',
         alignItems: 'center',
         backgroundColor: '#F8F3E9',
+        position: 'relative',
     },
+    backgroundRectangle: {
+        position: 'absolute',
+        top: 0,
+        left: 0,
+        width: '100%',
+        height: '50%',
+        backgroundColor: '#A09189',
+        borderBottomLeftRadius: 40,
+        borderBottomRightRadius: 40,
+        elevation: 0,
+    },    
     backButton: {
         position: 'absolute',
         top: 20,
@@ -83,7 +97,7 @@ const styles = StyleSheet.create({
         alignSelf: 'center',
         fontSize: 28,
         fontWeight: 'bold',
-        color: '#5C4B3D',
+        color: '#382f27',
     },
     loginContainer: {
         width: 250,
@@ -109,6 +123,7 @@ const styles = StyleSheet.create({
         color: '#5C4B3D',
     },
     signInButton: {
+        marginTop: 10,
         width: '100%',
         padding: 10,
         backgroundColor: '#C5D1AB',
@@ -126,9 +141,22 @@ const styles = StyleSheet.create({
     signupContainer: {
         marginTop: 20,
         alignItems: 'center',
+        width: '100%',
     },
     signUpButton: {
         marginTop: 10,
+        width: '100%',
+        padding: 10,
+        backgroundColor: '#C5D1AB',
+        borderRadius: 20,
+        alignItems: 'center',
+    },
+    destinationImage: {
+        width: '80%',
+        height: '55%',
+        position: 'absolute',
+        top: -70,
+        resizeMode: 'contain',
     }
 });
 
