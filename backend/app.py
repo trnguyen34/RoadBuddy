@@ -11,6 +11,7 @@ from firebase_admin import credentials, firestore, auth
 from firebase_admin.auth import InvalidIdTokenError, EmailAlreadyExistsError
 from firebase_admin.exceptions import FirebaseError
 from flask_cors import CORS
+import datetime
 
 from utils import (
     is_duplicate_car, is_duplicate_ride, print_json
@@ -639,6 +640,34 @@ def api_home():
     print_json(user)
 
     return jsonify({"message": f"Welcome {user_name}!"}), 200
+
+@app.route('/post-message', methods=['GET', 'POST'])
+@auth_required
+def post_message():
+    """
+    Handles posting a message.
+
+    Returns:
+        JSON response if successful, or renders the postMessage form.
+    """
+    if request.method == 'POST':
+        message_details = {
+            'to': request.form.get('to'),
+            'from': request.form.get('from'),
+            'content': request.form.get('content'),
+            'time': datetime.utcnow().strftime('%Y-%m-%d')
+        }
+
+        try:
+            user_id = session['user'].get('uid')
+            messages_ref = db.collection('users').document(user_id).collection('messages')
+            messages_ref.document().set(message_details)
+
+            return jsonify({"message": "Message posted successfully", "data": message_details}), 201
+        except FirebaseError:
+            return render_template('postMessage.html', error="Please try again.")
+
+    return render_template('postMessage.html')
 
 if __name__ == "__main__":
     app.run(host='0.0.0.0', port=8090, debug=True)
