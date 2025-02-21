@@ -600,9 +600,11 @@ def get_coming_up_rides():
         user_doc_ref = db.collection('users').document(user_id)
         user_doc = user_doc_ref.get()
         rides_joined = user_doc.get('ridesJoined')
+        rides_posted = user_doc.get('ridesPosted')
+        all_rides = (rides_joined or []) + (rides_posted or [])
 
         rides = []
-        for ride_id in rides_joined:
+        for ride_id in all_rides:
             ride_doc_ref = db.collection('rides').document(ride_id)
             ride_doc = ride_doc_ref.get()
             ride_data = ride_doc.to_dict()
