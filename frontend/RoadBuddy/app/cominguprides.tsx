@@ -7,10 +7,14 @@ import {
   FlatList,
   ActivityIndicator,
   StyleSheet,
+	TextInput,
   TouchableOpacity,
 } from "react-native";
 import axios from "axios";
+import { Ionicons } from "@expo/vector-icons";
 import { BASE_URL } from "../configs/base-url";
+import { router, useNavigation } from "expo-router";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 interface Ride {
   id: string;
@@ -25,6 +29,9 @@ interface Ride {
 }
 
 function ComingUpRides() {
+	const insets = useSafeAreaInsets();
+	const navigation = useNavigation();
+
   const [rides, setRides] = useState<Ride[]>([]);
   const [loading, setLoading] = useState<boolean>(true);
   const [error, setError] = useState<string>("");
@@ -68,21 +75,32 @@ function ComingUpRides() {
 
   return (
     <SafeAreaView style={styles.safeArea}>
-      <View style={styles.container}>
-        <Text style={styles.title}>My Upcoming Rides</Text>
-        {loading ? (
-          <ActivityIndicator size="large" color="#8C7B6B" />
-        ) : error ? (
-          <Text style={styles.errorText}>{error}</Text>
-        ) : (
-          <FlatList
-            data={rides}
-            keyExtractor={(item) => item.id}
-            renderItem={renderRideItem}
-            contentContainerStyle={styles.listContent}
-          />
-        )}
-      </View>
+				<View style={[styles.headerContainer,]}>
+					{/* Back Button using `router.back()` */}
+					<TouchableOpacity style={styles.backButton} onPress={() => router.back()}>
+						<Ionicons name="arrow-back" size={24} color="#FFF" />
+					</TouchableOpacity>
+
+					<Ionicons name="car-outline" size={40} color="#FFF" style={styles.carIcon} />
+					<Text style={styles.title}>My Upcoming Rides</Text>
+
+				</View>
+
+				{/* Rides List */}
+				<View style={styles.container}>
+					{loading ? (
+						<ActivityIndicator size="large" color="#F8F3E9" />
+					) : error ? (
+						<Text style={styles.errorText}>{error}</Text>
+					) : (
+						<FlatList
+							data={rides}
+							keyExtractor={(item) => item.id}
+							renderItem={renderRideItem}
+							contentContainerStyle={styles.listContent}
+						/>
+					)}
+				</View>
     </SafeAreaView>
   );
 }
@@ -90,19 +108,35 @@ function ComingUpRides() {
 const styles = StyleSheet.create({
   safeArea: {
     flex: 1,
-    backgroundColor: "#F8F3E9",
+    backgroundColor: "#8C7B6B",
   },
   container: {
     flex: 1,
     padding: 20,
-    backgroundColor: "#F8F3E9",
+    backgroundColor: "#8C7B6B",
+		paddingTop: 10,
+  },
+  headerContainer: {
+		paddingTop: "5%",
+    backgroundColor: "#8C7B6B",
+    borderBottomLeftRadius: 50,
+    borderBottomRightRadius: 50,
+    alignItems: "center",
+    position: "relative",
+  },
+	carIcon: {
+		paddingTop: 3,
+    marginBottom: 5,
+  },
+  backButton: {
+    position: "absolute",
+    left: 15,
+    top: 15,
   },
   title: {
     fontSize: 24,
     fontWeight: "bold",
-    textAlign: "center",
-    marginBottom: 20,
-    color: "#5C4B3D",
+    color: "#FFF",
   },
   errorText: {
     color: "red",
@@ -135,6 +169,20 @@ const styles = StyleSheet.create({
     fontSize: 16,
     color: "#333",
     marginBottom: 4,
+  },
+	searchContainer: {
+    flexDirection: "row",
+    alignItems: "center",
+    backgroundColor: "#F8F3E9",
+    width: "80%",
+    borderRadius: 20,
+    paddingHorizontal: 15,
+    paddingVertical: 8,
+  },
+  searchInput: {
+    flex: 1,
+    marginLeft: 5,
+    color: "#5C4B3D",
   },
 });
 

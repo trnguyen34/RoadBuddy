@@ -13,7 +13,8 @@ import {
 import axios from "axios";
 import { Ionicons } from "@expo/vector-icons";
 import { BASE_URL } from "../configs/base-url";
-import { router } from "expo-router";
+import { router, useNavigation } from "expo-router";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 interface Ride {
   id: string;
@@ -28,6 +29,9 @@ interface Ride {
 }
 
 export default function AvailableRides() {
+  const insets = useSafeAreaInsets();
+  const navigation = useNavigation();
+
   const [rides, setRides] = useState<Ride[]>([]);
   const [loading, setLoading] = useState<boolean>(true);
   const [error, setError] = useState<string>("");
@@ -84,6 +88,11 @@ export default function AvailableRides() {
       <View style={styles.container}>
         {/* Header Section */}
         <View style={styles.headerContainer}>
+          {/* Back Button */}
+          <TouchableOpacity style={styles.backButton} onPress={() => navigation.goBack()}>
+            <Ionicons name="arrow-back" size={24} color="#FFF" />
+          </TouchableOpacity>
+
           <Ionicons name="car-outline" size={40} color="#FFF" style={styles.carIcon} />
           <Text style={styles.ridesTitle}>Rides</Text>
 
@@ -118,11 +127,11 @@ export default function AvailableRides() {
 const styles = StyleSheet.create({
   safeArea: {
     flex: 1,
-    backgroundColor: "#F8F3E9",
+    backgroundColor: "#8C7B6B",
   },
   container: {
     flex: 1,
-    backgroundColor: "#F8F3E9",
+    backgroundColor: "#FBF4E5",
   },
   headerContainer: {
     backgroundColor: "#8C7B6B",
@@ -131,6 +140,11 @@ const styles = StyleSheet.create({
     paddingBottom: 50,
     alignItems: "center",
     paddingTop: 20,
+  },
+  backButton: {
+    position: "absolute",
+    left: 15,
+    top: 15,
   },
   carIcon: {
     marginBottom: 5,
