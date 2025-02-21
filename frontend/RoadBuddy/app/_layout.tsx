@@ -6,52 +6,52 @@ export default function RootLayout() {
     <Stack>
       <Stack.Screen 
         name="index" 
-        options={{ 
-          title: "RoadBuddy",
-        }} />
-      <Stack.Screen
-        name="signup" 
         options={{
           title: "RoadBuddy",
         }} />
-      <Stack.Screen 
-        name="logout" 
-        options={{  
+      <Stack.Screen
+        name="signup"
+        options={{
+          title: "RoadBuddy",
+        }} />
+      <Stack.Screen
+        name="logout"
+        options={{
           title: "Signup",
         }} />
-      <Stack.Screen 
-        name="addcar" 
-        options={{  
+      <Stack.Screen
+        name="addcar"
+        options={{
           title: "",
         }} />
-      <Stack.Screen 
-        name="postride" 
-        options={{  
+      <Stack.Screen
+        name="postride"
+        options={{
           title: "Post Ride",
         }} />
-      <Stack.Screen 
-        name="home" 
-        options={{ 
+      <Stack.Screen
+        name="home"
+        options={{
           title: "",
           headerBackVisible: false,
-        }} 
+        }}
       />
-      <Stack.Screen 
-        name="login" 
-        options={{ 
+      <Stack.Screen
+        name="login"
+        options={{
           title: "Login",
           headerBackVisible: false,
-        }} 
+        }}
       />
-      <Stack.Screen 
-        name="availablerides" 
-        options={{  
+      <Stack.Screen
+        name="availablerides"
+        options={{
           title: "",
           headerShown: false
         }} />
-      <Stack.Screen 
-        name="cominguprides" 
-        options={{  
+      <Stack.Screen
+        name="cominguprides"
+        options={{
           title: "",
           headerShown: false
         }} />
