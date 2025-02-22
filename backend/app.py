@@ -32,8 +32,14 @@ firebase_admin.initialize_app(cred)
 db = firestore.client()
 
 stripe_keys = {
-    "secret_key": "sk_test_51MjBbNDiM3EAos9ofwDzdsbJk97A0HgXhnhkSaBUDaISKbxxURNFZtXWIDST7ZWDWrCb4ZihCO2eLNZWjru4VKx000b02YyMeY",
-    "publishable_key": "pk_test_51MjBbNDiM3EAos9ocETiK2jsHzePLkUvL95YrsEwpCgThRFn4EI0eFyNl55l7jsJzEHoHbGXOyfDm9HYTLKLsKHw00jukt7PIy",
+    "secret_key": (
+        "sk_test_51MjBbNDiM3EAos9ofwDzdsbJk97A0HgXhnhkSaBUDaISKbxxURNFZtXWIDST7"
+        "ZWDWrCb4ZihCO2eLNZWjru4VKx000b02YyMeY"
+    ),
+    "publishable_key": (
+        "pk_test_51MjBbNDiM3EAos9ocETiK2jsHzePLkUvL95YrsEwpCgThRFn4EI0eFyNl5"
+        "5l7jsJzEHoHbGXOyfDm9HYTLKLsKHw00jukt7PIy"
+    ),
 }
 
 stripe.api_key = stripe_keys["secret_key"]
