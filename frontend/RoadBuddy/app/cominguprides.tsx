@@ -35,7 +35,7 @@ function ComingUpRides() {
   const [rides, setRides] = useState<Ride[]>([]);
   const [loading, setLoading] = useState<boolean>(true);
   const [error, setError] = useState<string>("");
-  const [refreshing, setRefreshing] = useState<boolean>(false); // New state for pull-to-refresh
+  const [refreshing, setRefreshing] = useState<boolean>(false);
 
   const fetchRides = async () => {
     try {
@@ -138,8 +138,8 @@ function ComingUpRides() {
             keyExtractor={(item) => item.id}
             renderItem={renderRideItem}
             contentContainerStyle={styles.listContent}
-            refreshing={refreshing} // Pull-to-refresh state
-            onRefresh={handleRefresh} // Function to call when user scrolls up
+            refreshing={refreshing}
+            onRefresh={handleRefresh}
           />
         )}
       </View>
