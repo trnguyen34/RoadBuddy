@@ -58,7 +58,7 @@ export default function Login() {
 return (
     <View style={styles.container}>
         <View style={styles.backgroundRectangle} />
-        <TouchableOpacity onPress={() => console.log('Back button pressed')} style={styles.backButton}>
+        <TouchableOpacity onPress={() => router.push("/start")} style={styles.backButton}>
             <Text>&#8592;</Text>
         </TouchableOpacity>
         <Text style={styles.title}>RoadBuddy</Text>
@@ -123,12 +123,12 @@ const styles = StyleSheet.create({
   },    
   backButton: {
       position: 'absolute',
-      top: 20,
+      top: 80,
       left: 20,
   },
   title: {
       position: 'absolute',
-      top: 20,
+      top: 70,
       alignSelf: 'center',
       fontSize: 28,
       fontWeight: 'bold',
@@ -190,7 +190,7 @@ const styles = StyleSheet.create({
       width: '80%',
       height: '55%',
       position: 'absolute',
-      top: -70,
+      top: -60,
       resizeMode: 'contain',
   },
 });

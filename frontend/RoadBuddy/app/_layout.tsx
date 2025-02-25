@@ -10,18 +10,21 @@ export default function RootLayout() {
           name="index" 
           options={{
             title: "RoadBuddy",
+            headerShown: false,
           }}
         />
         <Stack.Screen
           name="signup"
           options={{
             title: "RoadBuddy",
+            headerShown: false,
           }}
         />
         <Stack.Screen
           name="logout"
           options={{
-            title: "Signup",
+            title: "Logout",
+            headerShown: false,
           }}
         />
         <Stack.Screen
@@ -41,6 +44,7 @@ export default function RootLayout() {
           options={{
             title: "",
             headerBackVisible: false,
+            headerShown: false,
           }}
         />
         <Stack.Screen
@@ -48,6 +52,15 @@ export default function RootLayout() {
           options={{
             title: "Login",
             headerBackVisible: false,
+            headerShown: false,
+          }}
+        />
+        <Stack.Screen
+          name="start"
+          options={{
+            title: "Start",
+            headerBackVisible: false,
+            headerShown: false,
           }}
         />
         <Stack.Screen
