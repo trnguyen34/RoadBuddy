@@ -14,7 +14,8 @@ from flask_cors import CORS
 
 from utils import (
     is_duplicate_car, is_duplicate_ride, print_json, check_required_fields,
-    remove_ride_from_user, remove_user_from_ride_passenger, add_user_to_ride_passenger
+    remove_ride_from_user, remove_user_from_ride_passenger, add_user_to_ride_passenger,
+    get_document_from_db
 )
 
 app = Flask(__name__)
@@ -441,10 +442,8 @@ def api_post_ride():
 @app.route('/api/request-ride', methods=['POST'])
 @auth_required
 def api_request_ride():
-    """_summary_
-
-    Returns:
-        _type_: _description_
+    """
+    Request a ride.
     """
     data = request.get_json()
     if not data:
@@ -491,29 +490,34 @@ def api_request_ride():
 @app.route('/api/payment-sheet', methods=['POST'])
 @auth_required
 def create_payment_sheet():
-    """_summary_
-
-    Returns:
-        _type_: _description_
     """
-    user_id = session.get('user', {}).get('uid')
-    if not user_id:
-        return jsonify({"error": "User not authenticated"}), 401
-
+    Striple payment sheet.
+    """
     data = request.get_json()
     if not data:
         return jsonify({"error": "Invalid JSON payload"}), 400
 
+    required_fields = [
+      'rideId',
+      'amount'
+    ]
+
+    missing_response = check_required_fields(data, required_fields)
+    if missing_response:
+        return jsonify(missing_response[0]), missing_response[1]
+
     ride_id = data.get('rideId').strip()
     amount_dollars = data.get('amount')
-    if not ride_id or not amount_dollars:
-        return jsonify({"error": "Missing required field(s): rideId and amount are required."}), 400
 
-    ride_doc_ref = db.collection('rides').document(ride_id)
-    ride_doc = ride_doc_ref.get()
+    ride_doc = get_document_from_db(db, ride_id, "rides")
+    if not ride_doc['success']:
+        return jsonify({"error": ride_doc["error"]}), ride_doc["code"]
 
-    if not ride_doc.exists:
-        return jsonify({"error": "Ride not found"}), 404
+    ride_doc = ride_doc["document"]
+
+    user_id = get_user_id()
+    if not user_id:
+        return jsonify({"error": "User not authenticated"}), 401
 
     ride_owner_id = ride_doc.get('ownerID')
     if ride_owner_id == user_id:
@@ -529,7 +533,6 @@ def create_payment_sheet():
         return jsonify({"error": "User already requested this ride."}), 400
 
     try:
-        # Convert the amount from dollars to cents.
         amount_cents = int(float(amount_dollars) * 100)
     except ValueError:
         return jsonify({"error": "Invalid amount format."}), 400
@@ -572,10 +575,16 @@ def create_payment_sheet():
 @auth_required
 def get_all_rides():
     """Fetch all available rides with status 'open'."""
-    user_id = session.get('user', {}).get('uid')
-    user_doc_ref = db.collection('users').document(user_id)
-    user_doc = user_doc_ref.get()
-    rides_joined = user_doc.get('ridesJoined')
+    user_id = get_user_id()
+    if user_id is None:
+        return jsonify({"error": "User not unauthorized"}), 401
+
+    user_doc = get_document_from_db(db, user_id, "users")
+    if not user_doc['success']:
+        return jsonify({"error": user_doc["error"]}), user_doc["code"]
+
+    user_doc = user_doc["document"]
+    rides_joined = user_doc.get('ridesJoined') or []
 
     try:
         rides_ref = db.collection('rides').where('status', '==', 'open')
@@ -614,20 +623,27 @@ def get_ride_details(ride_id):
 @auth_required
 def get_coming_up_rides():
     """Fetch all the user coming up rides"""
-    user_id = session.get('user', {}).get('uid')
+    user_id = get_user_id()
+
     try:
-        user_doc_ref = db.collection('users').document(user_id)
-        user_doc = user_doc_ref.get()
+        user_doc = get_document_from_db(db, user_id, "users")
+        if not user_doc['success']:
+            return jsonify({"error": user_doc["error"]}), user_doc["code"]
+
+        user_doc = user_doc["document"]
+
         rides_joined = user_doc.get('ridesJoined')
         rides_posted = user_doc.get('ridesPosted')
         all_rides = (rides_joined or []) + (rides_posted or [])
 
         rides = []
         for ride_id in all_rides:
-            ride_doc_ref = db.collection('rides').document(ride_id)
-            ride_doc = ride_doc_ref.get()
-            ride_data = ride_doc.to_dict()
-            ride_data["id"] = ride_doc.id
+            ride_doc = get_document_from_db(db, ride_id, "rides")
+            if not ride_doc['success']:
+                continue
+
+            ride_data = ride_doc["document"]
+            ride_data["id"] = ride_id
             rides.append(ride_data)
 
         return jsonify({"rides": rides}), 200
@@ -673,7 +689,7 @@ def api_cancel_ride():
     try:
         user_id = get_user_id()
         if user_id is None:
-            return jsonify({"error": "Unauthorized"}), 401
+            return jsonify({"error": "User not unauthorized"}), 401
 
         ride_id = data.get('rideId')
 

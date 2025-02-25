@@ -3,6 +3,7 @@ import json
 from google.cloud.firestore import (
     ArrayRemove, ArrayUnion
 )
+from firebase_admin.exceptions import FirebaseError
 
 def is_duplicate_car(db, user_id, car_details):
     """
@@ -192,3 +193,24 @@ def add_user_to_ride_passenger(db, user_id, ride_id, field):
 
     except Exception as e:
         return {"success": False, "error": str(e)}
+
+def get_document_from_db(db, doc_id, collection_name):
+    """Get a document from the Firestore"""
+    try:
+        ref = db.collection(collection_name).document(doc_id)
+        doc = ref.get()
+
+        if not doc.exists:
+            return {"success": False, "error": f"{collection_name} not found", "code": 400}
+
+        return {"success": True, "document": doc.to_dict(), "code": 200}
+    except FirebaseError as e:
+        return {
+            "success": False,
+            "error": f"Failed to fetech {collection_name} collection.",
+            "details": str(e),
+            "code": 500
+        }
+    except Exception as e:
+        print("error")
+        return {"success": False, "error": str(e), "code": 500}
