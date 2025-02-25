@@ -1,25 +1,21 @@
+// app/ridedetails.tsx
 import React, { useEffect, useState, useRef, useMemo, useCallback } from "react";
 import {
   View,
   Text,
   ActivityIndicator,
   StyleSheet,
-  Alert,
   TouchableOpacity,
 } from "react-native";
 import { GestureHandlerRootView } from "react-native-gesture-handler";
-import { useLocalSearchParams } from "expo-router";
+import { useLocalSearchParams, router } from "expo-router";
 import axios from "axios";
-import { BASE_URL } from "../../configs/base-url";
-import { router } from "expo-router";
-import { StripeProvider, useStripe } from "@stripe/stripe-react-native";
+import { BASE_URL } from "../configs/base-url";
 import MapView, { Marker, Polyline } from "react-native-maps";
 import BottomSheet, { BottomSheetView } from "@gorhom/bottom-sheet";
-import { googlePlaceApi } from "../../configs/google-api";
+import { googlePlaceApi } from "../configs/google-api";
 import { Ionicons } from "@expo/vector-icons";
 
-const STRIPE_PUBLISHABLE_KEY =
-  "pk_test_51MjBbNDiM3EAos9ocETiK2jsHzePLkUvL95YrsEwpCgThRFn4EI0eFyNl55l7jsJzEHoHbGXOyfDm9HYTLKLsKHw00jukt7PIy";
 const GOOGLE_MAPS_API_KEY = googlePlaceApi;
 
 interface Ride {
@@ -78,8 +74,7 @@ function RideDetailsScreen() {
   const [ride, setRide] = useState<Ride | null>(null);
   const [loading, setLoading] = useState<boolean>(true);
   const [error, setError] = useState<string>("");
-  const [bookingLoading, setBookingLoading] = useState<boolean>(false);
-  // Coordinates for markers and the route polyline
+  // Coordinates for markers and route polyline
   const [originCoord, setOriginCoord] = useState<Coordinate | null>(null);
   const [destinationCoord, setDestinationCoord] = useState<Coordinate | null>(null);
   const [routeCoordinates, setRouteCoordinates] = useState<Coordinate[]>([]);
@@ -87,7 +82,6 @@ function RideDetailsScreen() {
   const [originAddress, setOriginAddress] = useState<string>("");
   const [destinationAddress, setDestinationAddress] = useState<string>("");
 
-  const stripe = useStripe();
   const { id } = useLocalSearchParams();
   const mapRef = useRef<MapView>(null);
   // BottomSheet ref and snap points
@@ -164,71 +158,6 @@ function RideDetailsScreen() {
     }
   };
 
-  // Booking logic remains unchanged
-  const handleBookRide = async () => {
-    if (!ride || !id) return;
-    setError("");
-    setBookingLoading(true);
-    try {
-      const amount = String(ride.cost);
-      const response = await axios.post(
-        `${BASE_URL}/api/payment-sheet`,
-        { rideId: id, amount },
-        { withCredentials: true }
-      );
-      const { paymentIntent, ephemeralKey, customer } = response.data;
-      const { error: initError } = await stripe.initPaymentSheet({
-        paymentIntentClientSecret: paymentIntent,
-        customerEphemeralKeySecret: ephemeralKey,
-        customerId: customer,
-        merchantDisplayName: "RoadBuddy Inc",
-      });
-      if (initError) {
-        setError(initError.message || "Error initializing payment.");
-        setBookingLoading(false);
-        return;
-      }
-      const { error: paymentError } = await stripe.presentPaymentSheet();
-      if (paymentError) {
-        Alert.alert("Payment Error", paymentError.message);
-      } else {
-        try {
-          const rideResponse = await axios.post(
-            `${BASE_URL}/api/request-ride`,
-            { rideId: id },
-            { withCredentials: true }
-          );
-          if (rideResponse.status === 200 || rideResponse.status === 201) {
-            Alert.alert(
-              "Success",
-              "Your payment is confirmed and you have been added to the ride!"
-            );
-            router.replace("/cominguprides");
-          } else {
-            Alert.alert(
-              "Error",
-              "Payment succeeded, but there was an issue joining the ride."
-            );
-          }
-        } catch (err: any) {
-          console.error(err);
-          Alert.alert(
-            "Error",
-            "Payment succeeded, but failed to add you to the ride."
-          );
-        }
-      }
-    } catch (err: any) {
-      console.error(err);
-      setError(
-        err.response?.data?.error ||
-          "An error occurred while processing your payment."
-      );
-    } finally {
-      setBookingLoading(false);
-    }
-  };
-
   if (loading) {
     return (
       <View style={styles.center}>
@@ -257,9 +186,7 @@ function RideDetailsScreen() {
     <GestureHandlerRootView style={styles.container}>
       {/* Back Button */}
       <TouchableOpacity style={styles.backButton} onPress={() => router.back()}>
-        <Text style={styles.backButtonText}>
-          <Ionicons name="arrow-back" size={24} color="#FFF" />
-        </Text>
+        <Ionicons name="arrow-back" size={24} color="#FFF" />
       </TouchableOpacity>
 
       {/* Full Screen Map */}
@@ -326,13 +253,6 @@ function RideDetailsScreen() {
             <Text style={styles.cardText}>Cost: ${ride.cost}</Text>
             <Text style={styles.cardText}>Driver: {ride.ownerName}</Text>
           </View>
-          {bookingLoading ? (
-            <ActivityIndicator size="large" color="#8C7B6B" />
-          ) : (
-            <TouchableOpacity style={styles.bookButton} onPress={handleBookRide}>
-              <Text style={styles.bookButtonText}>Book This Ride</Text>
-            </TouchableOpacity>
-          )}
         </BottomSheetView>
       </BottomSheet>
     </GestureHandlerRootView>
@@ -358,10 +278,6 @@ const styles = StyleSheet.create({
     paddingVertical: 7,
     paddingHorizontal: 10,
     borderRadius: 5,
-  },
-  backButtonText: {
-    color: "#fff",
-    fontSize: 16,
   },
   sheetContent: {
     flex: 1,
@@ -401,29 +317,8 @@ const styles = StyleSheet.create({
     color: "#333",
     marginBottom: 4,
   },
-  bookButton: {
-    backgroundColor: "#C5D1AB",
-    paddingVertical: 14,
-    borderRadius: 20,
-    alignItems: "center",
-    shadowColor: "#000",
-    shadowOffset: { width: 1, height: 2 },
-    shadowOpacity: 0.2,
-    shadowRadius: 4,
-    elevation: 2,
-    marginTop: 10,
-  },
-  bookButtonText: {
-    fontSize: 16,
-    fontWeight: "bold",
-    color: "#333",
-  },
 });
 
 export default function RideDetails() {
-  return (
-    <StripeProvider publishableKey={STRIPE_PUBLISHABLE_KEY}>
-      <RideDetailsScreen />
-    </StripeProvider>
-  );
+    return <RideDetailsScreen />;
 }
