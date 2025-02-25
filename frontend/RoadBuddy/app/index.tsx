@@ -1,7 +1,7 @@
 import React from "react";
 import { View, Text, Button, StyleSheet } from "react-native";
 import { router } from "expo-router";
-import Login from "./login";
+import Start from "./start";
 
 // export default function Index() {
 //   return (
@@ -14,7 +14,7 @@ import Login from "./login";
 // }
 
 export default function Index() {
-  return <Login />;
+  return <Start />;
 }
 
 const styles = StyleSheet.create({
