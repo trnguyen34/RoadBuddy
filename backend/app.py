@@ -507,7 +507,6 @@ def create_payment_sheet():
         return jsonify(missing_response[0]), missing_response[1]
 
     ride_id = data.get('rideId').strip()
-    amount_dollars = data.get('amount')
 
     ride_doc = get_document_from_db(db, ride_id, "rides")
     if not ride_doc['success']:
@@ -521,11 +520,10 @@ def create_payment_sheet():
 
     ride_owner_id = ride_doc.get('ownerID')
     if ride_owner_id == user_id:
-        return jsonify({"error": "You cannot book your own ride"}), 400
+        return jsonify({"error": "User cannot book its own ride."}), 400
 
     max_passengers = ride_doc.get('maxPassengers')
     curr_passengers = ride_doc.get('currentPassengers') or []
-
     if len(curr_passengers) >= max_passengers:
         return jsonify({"error": "Ride is full"}), 400
 
@@ -533,7 +531,7 @@ def create_payment_sheet():
         return jsonify({"error": "User already requested this ride."}), 400
 
     try:
-        amount_cents = int(float(amount_dollars) * 100)
+        amount_cents = int(float(data.get('amount')) * 100)
     except ValueError:
         return jsonify({"error": "Invalid amount format."}), 400
 
