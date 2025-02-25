@@ -708,8 +708,7 @@ def api_cancel_ride():
                 remove_ride_id = remove_ride_from_user(db, user_id, ride_id, "ridesPosted")
                 if remove_ride_id:
                     return jsonify({"message": "Ride successfully deleted by owner"}), 201
-                else:
-                    return jsonify({"error": "Ride failed to delete by owner"}), 400
+                return jsonify({"error": "Ride failed to delete by owner"}), 400
 
             return jsonify({
                 "error": "Owner cannot delete a ride that has at least one passenger in it."
@@ -725,8 +724,7 @@ def api_cancel_ride():
                     add_user_to_ride_passenger(db, user_id, ride_id, "currentPassengers")
                     return jsonify({"error": "Ride failed to cancell"}), 400
                 return jsonify({"message": "Ride successfully cancelled"}), 201
-            else:
-                return jsonify({"error": "Ride failed to cancell"}), 400
+            return jsonify({"error": "Ride failed to cancell"}), 400
 
         return jsonify({"error": "User is not a passenger in this ride."}), 400
 
