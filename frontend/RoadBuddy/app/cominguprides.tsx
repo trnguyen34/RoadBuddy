@@ -29,36 +29,79 @@ interface Ride {
 }
 
 function ComingUpRides() {
-	const insets = useSafeAreaInsets();
-	const navigation = useNavigation();
+  const insets = useSafeAreaInsets();
+  const navigation = useNavigation();
 
   const [rides, setRides] = useState<Ride[]>([]);
   const [loading, setLoading] = useState<boolean>(true);
   const [error, setError] = useState<string>("");
+  const [refreshing, setRefreshing] = useState<boolean>(false); // New state for pull-to-refresh
+
+  const fetchRides = async () => {
+    try {
+      const response = await axios.get(`${BASE_URL}/api/coming-up-rides`, {
+        withCredentials: true,
+      });
+
+      // Sort rides by date first, then by departure time
+      const sortedRides = response.data.rides.sort((a: Ride, b: Ride) => {
+        const dateA = new Date(a.date);
+        const dateB = new Date(b.date);
+
+        if (dateA.getTime() !== dateB.getTime()) {
+          return dateA.getTime() - dateB.getTime();
+        }
+
+        const timeA = a.departureTime.split(":").map(Number);
+        const timeB = b.departureTime.split(":").map(Number);
+        const departureTimeA = timeA[0] * 60 + timeA[1];
+        const departureTimeB = timeB[0] * 60 + timeB[1];
+
+        return departureTimeA - departureTimeB;
+      });
+
+      setRides(sortedRides);
+    } catch (err: any) {
+      setError(
+        err.response?.data?.error || "Failed to fetch rides. Please try again."
+      );
+    } finally {
+      setLoading(false);
+      setRefreshing(false); // Stop refreshing animation
+    }
+  };
 
   useEffect(() => {
-    const fetchRides = async () => {
-      try {
-        const response = await axios.get(`${BASE_URL}/api/coming-up-rides`, {
-          withCredentials: true,
-        });
-        setRides(response.data.rides);
-      } catch (err: any) {
-        setError(
-          err.response?.data?.error ||
-            "Failed to fetch rides. Please try again."
-        );
-      } finally {
-        setLoading(false);
-      }
-    };
-
     fetchRides();
   }, []);
 
+  // Function to handle pull-to-refresh
+  const handleRefresh = () => {
+    setRefreshing(true); // Show refresh indicator
+    fetchRides(); // Refetch rides
+  };
+
   const renderRideItem = ({ item }: { item: Ride }) => {
     return (
-      <TouchableOpacity style={styles.rideCard}>
+      <TouchableOpacity
+        style={styles.rideCard}
+        onPress={() =>
+          router.push({
+            pathname: "/ridedetails",
+            params: {
+              id: item.id,
+              from: item.from,
+              to: item.to,
+              date: item.date,
+              departureTime: item.departureTime,
+              cost: item.cost.toString(),
+              currentPassengers: JSON.stringify(item.currentPassengers),
+              maxPassengers: item.maxPassengers.toString(),
+              ownerName: item.ownerName,
+            },
+          })
+        }
+      >
         <Text style={styles.rideHeader}>
           {item.from} → {item.to}
         </Text>
@@ -75,32 +118,31 @@ function ComingUpRides() {
 
   return (
     <SafeAreaView style={styles.safeArea}>
-				<View style={[styles.headerContainer,]}>
-					{/* Back Button using `router.back()` */}
-					<TouchableOpacity style={styles.backButton} onPress={() => router.back()}>
-						<Ionicons name="arrow-back" size={24} color="#FFF" />
-					</TouchableOpacity>
+      <View style={[styles.headerContainer]}>
+        <TouchableOpacity style={styles.backButton} onPress={() => router.back()}>
+          <Ionicons name="arrow-back" size={24} color="#FFF" />
+        </TouchableOpacity>
+        <Ionicons name="car-outline" size={40} color="#FFF" style={styles.carIcon} />
+        <Text style={styles.title}>My Upcoming Rides</Text>
+      </View>
 
-					<Ionicons name="car-outline" size={40} color="#FFF" style={styles.carIcon} />
-					<Text style={styles.title}>My Upcoming Rides</Text>
-
-				</View>
-
-				{/* Rides List */}
-				<View style={styles.container}>
-					{loading ? (
-						<ActivityIndicator size="large" color="#F8F3E9" />
-					) : error ? (
-						<Text style={styles.errorText}>{error}</Text>
-					) : (
-						<FlatList
-							data={rides}
-							keyExtractor={(item) => item.id}
-							renderItem={renderRideItem}
-							contentContainerStyle={styles.listContent}
-						/>
-					)}
-				</View>
+      {/* Rides List */}
+      <View style={styles.container}>
+        {loading ? (
+          <ActivityIndicator size="large" color="#F8F3E9" />
+        ) : error ? (
+          <Text style={styles.errorText}>{error}</Text>
+        ) : (
+          <FlatList
+            data={rides}
+            keyExtractor={(item) => item.id}
+            renderItem={renderRideItem}
+            contentContainerStyle={styles.listContent}
+            refreshing={refreshing} // Pull-to-refresh state
+            onRefresh={handleRefresh} // Function to call when user scrolls up
+          />
+        )}
+      </View>
     </SafeAreaView>
   );
 }
