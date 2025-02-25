@@ -13,7 +13,8 @@ from firebase_admin.exceptions import FirebaseError
 from flask_cors import CORS
 
 from utils import (
-    is_duplicate_car, is_duplicate_ride, print_json
+    is_duplicate_car, is_duplicate_ride, print_json, check_required_fields,
+    remove_ride_from_user, remove_user_from_ride_passenger, add_user_to_ride_passenger
 )
 
 app = Flask(__name__)
@@ -41,8 +42,11 @@ stripe_keys = {
         "5l7jsJzEHoHbGXOyfDm9HYTLKLsKHw00jukt7PIy"
     ),
 }
-
 stripe.api_key = stripe_keys["secret_key"]
+
+def get_user_id():
+    """Retrieve user ID"""
+    return session.get('user', {}).get('uid')
 
 def auth_required(f):
     """
@@ -433,7 +437,6 @@ def api_request_ride():
         _type_: _description_
     """
     data = request.get_json()
-
     if not data:
         return jsonify({"error": "Invalid JSON payload"}), 400
 
@@ -629,10 +632,10 @@ def get_coming_up_rides():
 
 @app.route('/api/user-id', methods=["GET"])
 @auth_required
-def get_user_id():
+def api_get_user_id():
     """Return the authenticated user's ID"""
     try:
-        user_id = session.get('user', {}).get('uid')
+        user_id = get_user_id()
         if not user_id:
             return jsonify({"error": "User ID not found"}), 404
 
@@ -641,11 +644,74 @@ def get_user_id():
     except Exception as e:
         return jsonify({"error": "An unexpected error occurred", "details": str(e)}), 500
 
+@app.route('/api/cancel-ride', methods=["POST"])
+@auth_required
+def api_cancel_ride():
+    """Cancel a ride"""
+    data = request.get_json()
+    if not data:
+        return jsonify({"error": "Invalid JSON payload"}), 400
+
+    required_fields = [
+      'rideId',
+    ]
+
+    missing_response = check_required_fields(data, required_fields)
+    if missing_response:
+        return jsonify(missing_response[0]), missing_response[1]
+
+    try:
+        user_id = get_user_id()
+        if user_id is None:
+            return jsonify({"error": "Unauthorized"}), 401
+
+        ride_id = data.get('rideId')
+
+        ride_doc_ref = db.collection('rides').document(ride_id)
+        ride_doc = ride_doc_ref.get()
+        if not ride_doc.exists:
+            return jsonify({"error": "Ride not found"}), 404
+
+        ride_data = ride_doc.to_dict()
+        ride_owner_id = ride_data.get("ownerID")
+        current_passengers = ride_data.get("currentPassengers", [])
+
+        if user_id == ride_owner_id:
+            if len(current_passengers) == 0:
+                ride_doc_ref.delete()
+                remove_ride_id = remove_ride_from_user(db, user_id, ride_id, "ridesPosted")
+                if remove_ride_id:
+                    return jsonify({"message": "Ride successfully deleted by owner"}), 201
+                else:
+                    return jsonify({"error": "Ride failed to delete by owner"}), 400
+
+            return jsonify({
+                "error": "Owner cannot delete a ride that has at least one passenger in it."
+                }), 400
+
+        if user_id in current_passengers:
+            remove_passengers = remove_user_from_ride_passenger(
+                db, user_id, ride_id, "currentPassengers"
+            )
+            if remove_passengers:
+                remove_ride_id = remove_ride_from_user(db, user_id, ride_id, "ridesJoined")
+                if not remove_passengers:
+                    add_user_to_ride_passenger(db, user_id, ride_id, "currentPassengers")
+                    return jsonify({"error": "Ride failed to cancell"}), 400
+                return jsonify({"message": "Ride successfully cancelled"}), 201
+            else:
+                return jsonify({"error": "Ride failed to cancell"}), 400
+
+        return jsonify({"error": "User is not a passenger in this ride."}), 400
+
+    except Exception as e:
+        return jsonify({"error": "An unexpected error occurred", "details": str(e)}), 500
+
+
 @app.route('/api/home', methods=['GET'])
 @auth_required
 def api_home():
     """_summary_
-
     Returns:
         _type_: _description_
     """

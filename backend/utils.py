@@ -1,5 +1,8 @@
 from datetime import datetime
 import json
+from google.cloud.firestore import (
+    ArrayRemove, ArrayUnion
+)
 
 def is_duplicate_car(db, user_id, car_details):
     """
@@ -127,3 +130,62 @@ def is_valid_boolean(value):
     if isinstance(value, str):
         return value.strip().lower() in ["true", "false"]
     return False
+
+def check_required_fields(data, required_fields):
+    """
+    Ensure that all required fields are present in the JSON payload.
+    """
+    missing_fields = []
+    for field in required_fields:
+        if field not in data or not data.get(field):
+            missing_fields.append(field)
+
+    if missing_fields:
+        return {"error": f"Missing or empty required field(s): {', '.join(missing_fields)}"}, 400
+    return None
+
+def remove_ride_from_user(db, user_id, ride_id, field):
+    """Removes a rideId from user's ridesPosted field."""
+    try:
+        user_doc_ref = db.collection("users").document(user_id)
+        user_doc_ref.update({
+            field: ArrayRemove([ride_id])
+        })
+        return True
+    except Exception:
+        return False
+
+def remove_user_from_ride_passenger(db, user_id, ride_id, field):
+    """Removes a user from the passenger field in Rides document"""
+    try:
+        user_doc_ref = db.collection("rides").document(ride_id)
+        user_doc_ref.update({
+            field: ArrayRemove([user_id])
+        })
+        return True
+    except Exception:
+        return False
+
+def add_user_to_ride_passenger(db, user_id, ride_id, field):
+    """Adds a user to the passenger field in the Rides document"""
+    try:
+        ride_doc_ref = db.collection("rides").document(ride_id)
+        ride_doc = ride_doc_ref.get()
+        if not ride_doc.exists:
+            return {"success": False, "error": "Ride not found"}
+
+        ride_data = ride_doc.to_dict()
+        max_passengers = ride_data.get("maxPassengers", 0)
+        current_passengers = ride_data.get(field, [])
+
+        if len(current_passengers) >= max_passengers:
+            return {"success": False, "error": "Ride is full"}
+
+        if user_id in current_passengers:
+            return {"success": False, "error": "User is already in the ride"}
+
+        ride_doc_ref.update({
+            field: ArrayUnion([user_id])
+        })
+    except Exception as e:
+        return {"success": False, "error": str(e)}
