@@ -627,6 +627,20 @@ def get_coming_up_rides():
     except Exception as e:
         return jsonify({"error": "An unexpected error occurred.", "details": str(e)}), 500
 
+@app.route('/api/user-id', methods=["GET"])
+@auth_required
+def get_user_id():
+    """Return the authenticated user's ID"""
+    try:
+        user_id = session.get('user', {}).get('uid')
+        if not user_id:
+            return jsonify({"error": "User ID not found"}), 404
+
+        return jsonify({"userId": user_id}), 200
+
+    except Exception as e:
+        return jsonify({"error": "An unexpected error occurred", "details": str(e)}), 500
+
 @app.route('/api/home', methods=['GET'])
 @auth_required
 def api_home():
@@ -647,4 +661,4 @@ def api_home():
     return jsonify({"message": f"Welcome {user_name}!"}), 200
 
 if __name__ == "__main__":
-    app.run(host='0.0.0.0', port=8090, debug=True)
+    app.run(host='0.0.0.0', port=8090, debug=True, threaded=True)
