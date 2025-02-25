@@ -361,20 +361,30 @@ def api_add_car():
 @app.route('/api/post-ride', methods=['POST'])
 @auth_required
 def api_post_ride():
-    """_summary_
-
-    Returns:
-        _type_: _description_
+    """
+    Post a ride.
     """
     data = request.get_json()
     if not data:
         return jsonify({"error": "Invalid JSON payload"}), 400
 
-    owner_id = session['user'].get('uid')
-    owner_name = session['user'].get('name')
+    required_fields = [
+      'from',
+      'to',
+      'date',
+      'departure_time',
+      'max_passengers',
+      'cost'
+    ]
+
+    missing_response = check_required_fields(data, required_fields)
+    if missing_response:
+        return jsonify(missing_response[0]), missing_response[1]
 
     try:
-        # Build ride details from JSON payload.
+        owner_id = session['user'].get('uid')
+        owner_name = session['user'].get('name')
+
         ride_details = {
             "from": data.get('from'),
             "to": data.get('to'),
@@ -706,7 +716,6 @@ def api_cancel_ride():
 
     except Exception as e:
         return jsonify({"error": "An unexpected error occurred", "details": str(e)}), 500
-
 
 @app.route('/api/home', methods=['GET'])
 @auth_required

@@ -187,5 +187,8 @@ def add_user_to_ride_passenger(db, user_id, ride_id, field):
         ride_doc_ref.update({
             field: ArrayUnion([user_id])
         })
+
+        return {"success": True, "message": "User added to the ride"}
+
     except Exception as e:
         return {"success": False, "error": str(e)}
