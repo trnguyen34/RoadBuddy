@@ -27,14 +27,18 @@ interface Ride {
   maxPassengers: number;
   ownerName: string;
 }
+type SortFunction = (a: Ride, b: Ride) => number;
 
+interface SortConfig {
+    [key: string]: SortFunction;
+}
 export default function AvailableRides() {
   const insets = useSafeAreaInsets();
   const navigation = useNavigation();
 
   const [rides, setRides] = useState<Ride[]>([]);
   const [loading, setLoading] = useState<boolean>(true);
-  const [changeRides, setChange] = useState<boolean>(false);
+  const [refreshRides, setRefresh] = useState<boolean>(false);
   const [error, setError] = useState<string>("");
 
   useEffect(() => {
@@ -83,12 +87,24 @@ export default function AvailableRides() {
       </TouchableOpacity>
     );
   };
-  function sortRides(rides:Ride[]){
-    console.log("aAAAA");
-    setRides(rides.sort((a,b) => a.ownerName.localeCompare(b.ownerName)));
-    setChange(true);
-    return;
-  }
+
+  function sortRides(criterion: keyof SortConfig | 'default', rides: Ride[]) {
+    const sortConfig: SortConfig = {
+        id: (a, b) => parseInt(a.id) - parseInt(b.id),
+        from: (a, b) => a.from.localeCompare(b.from),
+        to: (a, b) => a.to.localeCompare(b.to),
+        departure: (a, b) => new Date(a.departureTime).getTime() - new Date(b.departureTime).getTime(),
+        cost: (a, b) => a.cost-b.cost,
+        maxPassengers: (a, b) => a.maxPassengers - b.maxPassengers,
+        ownerName: (a, b) => a.ownerName.localeCompare(b.ownerName),
+        default: (a, b) => new Date(a.date).getTime() - new Date(b.date).getTime()
+    };
+    const sortFunction = sortConfig[criterion] ?? sortConfig['default'];
+    rides.sort(sortFunction);
+    setRides(rides);
+    setRefresh(!refreshRides);
+}
+
   return (
     <SafeAreaView style={styles.safeArea}>
       <View style={styles.container}>
@@ -127,7 +143,7 @@ export default function AvailableRides() {
             renderItem={renderRideItem}
             contentContainerStyle={styles.listContent}
             style={styles.list}
-            extraData={changeRides}
+            extraData={refreshRides}
           />
         )}
       </View>
