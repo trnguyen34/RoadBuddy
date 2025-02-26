@@ -34,6 +34,7 @@ export default function AvailableRides() {
 
   const [rides, setRides] = useState<Ride[]>([]);
   const [loading, setLoading] = useState<boolean>(true);
+  const [changeRides, setChange] = useState<boolean>(false);
   const [error, setError] = useState<string>("");
 
   useEffect(() => {
@@ -82,7 +83,12 @@ export default function AvailableRides() {
       </TouchableOpacity>
     );
   };
-
+  function sortRides(rides:Ride[]){
+    console.log("aAAAA");
+    setRides(rides.sort((a,b) => a.ownerName.localeCompare(b.ownerName)));
+    setChange(true);
+    return;
+  }
   return (
     <SafeAreaView style={styles.safeArea}>
       <View style={styles.container}>
@@ -104,7 +110,11 @@ export default function AvailableRides() {
               placeholder="Search"
               placeholderTextColor="#5C4B3D"
             />
+            
           </View>
+          <TouchableOpacity style={styles.sortButton} onPress={() => sortRides(rides)}>
+              <Ionicons name="arrow-back" size={24} color="#FFF" />
+            </TouchableOpacity>
         </View>
 
         {loading && <ActivityIndicator size="large" color="#8C7B6B" style={{ marginTop: 20 }} />}
@@ -117,6 +127,7 @@ export default function AvailableRides() {
             renderItem={renderRideItem}
             contentContainerStyle={styles.listContent}
             style={styles.list}
+            extraData={changeRides}
           />
         )}
       </View>
@@ -145,6 +156,10 @@ const styles = StyleSheet.create({
     position: "absolute",
     left: 15,
     top: 15,
+  },
+  sortButton: {
+    position: "absolute",
+    marginRight: 5,
   },
   carIcon: {
     marginBottom: 5,
