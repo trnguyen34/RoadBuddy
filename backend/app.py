@@ -569,6 +569,53 @@ def create_payment_sheet():
     except Exception as e:
         return jsonify({"error": "An unexpected error occurred.", "details": str(e)}), 500
 
+@app.route('/api/edit-ride')
+@auth_required
+def api_edit_ride():
+    data = request.get_json()
+    if not_data:
+        return jsonify({"error", "Invalid JSON payload"}), 400
+    
+    required_fields = {
+        'rideId',
+    }
+
+    missing_response = check_required_fields(data, required_fields)
+    if missing_response:
+        return jsonify(missing_response[0]), missing_response[1]
+    
+    try:
+        user_id = get_user_id()
+        if user_id is None:
+            return jsonify({"error": "User not unauthorized"}), 401
+
+        ride_id = data.get('rideId')
+        ride_doc_ref = db.collection('rides').document(ride_id)
+        ride_doc = ride_doc_ref.get()
+        if not ride_doc.exists:
+            return jsonify({"error": "Ride not found"}), 404
+
+        ride_data = ride_doc.to_dict()
+        ride_owner_id = ride_data.get("ownerID")
+
+        if user_id != ride_owner_id:
+            return jsonify({"error": "You are not authorized to edit this ride"}), 403
+        
+        updated_ride_details = {
+            "from": data.get('from'),
+            "to": data.get('to'),
+            "date": data.get('date'),
+            "departureTime": data.get('departureTime'),
+            "maxPassengers": int(data.get('maxPassengers')),
+            "cost": float(data.get('cost'))
+        }
+        ride_doc_ref.update(updated_ride_details)
+    except FirebaseError as e:
+        return jsonify({"error": "An error occurred while updating the ride", "details": str(e)}), 500
+
+    except Exception as e:
+        return jsonify({"error": "An unexpected error occurred", "details": str(e)}), 500
+
 @app.route('/api/available-rides', methods=['GET'])
 @auth_required
 def get_all_rides():
