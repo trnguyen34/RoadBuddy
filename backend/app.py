@@ -572,10 +572,13 @@ def create_payment_sheet():
 @app.route('/api/edit-ride')
 @auth_required
 def api_edit_ride():
+    """
+    edit ride details
+    """
     data = request.get_json()
-    if not_data:
+    if not data:
         return jsonify({"error", "Invalid JSON payload"}), 400
-    
+
     required_fields = {
         'rideId',
     }
@@ -583,7 +586,7 @@ def api_edit_ride():
     missing_response = check_required_fields(data, required_fields)
     if missing_response:
         return jsonify(missing_response[0]), missing_response[1]
-    
+
     try:
         user_id = get_user_id()
         if user_id is None:
@@ -600,7 +603,7 @@ def api_edit_ride():
 
         if user_id != ride_owner_id:
             return jsonify({"error": "You are not authorized to edit this ride"}), 403
-        
+
         updated_ride_details = {
             "from": data.get('from'),
             "to": data.get('to'),
@@ -610,10 +613,9 @@ def api_edit_ride():
             "cost": float(data.get('cost'))
         }
         ride_doc_ref.update(updated_ride_details)
-        return jsonify({"message": "Ride successfully updated", "ride": updated_ride_details}), 200
+        return jsonify({"message": "Ride successfully updated"}), 200
     except FirebaseError as e:
         return jsonify({"error": "An error occurred while updating the ride", "details": str(e)}), 500
-
     except Exception as e:
         return jsonify({"error": "An unexpected error occurred", "details": str(e)}), 500
 
