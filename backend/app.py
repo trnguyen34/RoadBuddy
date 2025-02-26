@@ -615,9 +615,9 @@ def api_edit_ride():
         ride_doc_ref.update(updated_ride_details)
         return jsonify({"message": "Ride successfully updated"}), 200
     except FirebaseError as e:
-        return jsonify({"error": "An error occurred while updating the ride", "details": str(e)}), 500
+        return jsonify({"error": "An error occurred while updating the ride"}), 500
     except Exception as e:
-        return jsonify({"error": "An unexpected error occurred", "details": str(e)}), 500
+        return jsonify({"error": "An unexpected error occurred"}), 500
 
 @app.route('/api/available-rides', methods=['GET'])
 @auth_required
