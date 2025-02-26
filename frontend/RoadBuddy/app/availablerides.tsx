@@ -103,7 +103,7 @@ export default function AvailableRides() {
     rides.sort(sortFunction);
     setRides(rides);
     setRefresh(!refreshRides);
-}
+  }
 
   return (
     <SafeAreaView style={styles.safeArea}>
