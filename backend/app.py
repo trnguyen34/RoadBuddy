@@ -610,6 +610,7 @@ def api_edit_ride():
             "cost": float(data.get('cost'))
         }
         ride_doc_ref.update(updated_ride_details)
+        return jsonify({"message": "Ride successfully updated", "ride": updated_ride_details}), 200
     except FirebaseError as e:
         return jsonify({"error": "An error occurred while updating the ride", "details": str(e)}), 500
 
