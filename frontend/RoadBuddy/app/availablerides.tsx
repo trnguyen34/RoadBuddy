@@ -96,8 +96,8 @@ export default function AvailableRides() {
         departure: (a, b) => new Date(a.departureTime).getTime() - new Date(b.departureTime).getTime(),
         cost: (a, b) => a.cost-b.cost,
         maxPassengers: (a, b) => a.maxPassengers - b.maxPassengers,
-        ownerName: (a, b) => a.ownerName.localeCompare(b.ownerName),
-        default: (a, b) => new Date(a.date).getTime() - new Date(b.date).getTime()
+        ownerName: (a, b) => a.ownerName.localeCompare(b.ownerName),  
+        default: (a, b) => new Date(`${a.date}T${a.departureTime}`).getTime() - new Date(`${b.date}T${b.departureTime}`).getTime()
     };
     const sortFunction = sortConfig[criterion] ?? sortConfig['default'];
     rides.sort(sortFunction);
@@ -128,7 +128,7 @@ export default function AvailableRides() {
             />
             
           </View>
-          <TouchableOpacity style={styles.sortButton} onPress={() => sortRides(rides)}>
+          <TouchableOpacity style={styles.sortButton} onPress={() => sortRides('', rides)}>
               <Ionicons name="arrow-back" size={24} color="#FFF" />
             </TouchableOpacity>
         </View>
