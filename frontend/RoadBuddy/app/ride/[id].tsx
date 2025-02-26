@@ -6,6 +6,7 @@ import {
   StyleSheet,
   Alert,
   TouchableOpacity,
+  Animated,
 } from "react-native";
 import { GestureHandlerRootView } from "react-native-gesture-handler";
 import { useLocalSearchParams } from "expo-router";
@@ -97,6 +98,9 @@ function RideDetailsScreen() {
     console.log("BottomSheet index:", index);
   }, []);
 
+  // Animated value for error fade
+  const fadeAnim = useRef(new Animated.Value(1)).current;
+
   useEffect(() => {
     const fetchRideDetails = async () => {
       try {
@@ -115,6 +119,24 @@ function RideDetailsScreen() {
       fetchRideDetails();
     }
   }, [id]);
+
+  // When error changes, display it and then fade out after 2 seconds
+  useEffect(() => {
+    if (error !== "") {
+      // Reset opacity to fully visible
+      fadeAnim.setValue(1);
+      const timer = setTimeout(() => {
+        Animated.timing(fadeAnim, {
+          toValue: 0,
+          duration: 1000,
+          useNativeDriver: true,
+        }).start(() => {
+          setError("");
+        });
+      }, 2000);
+      return () => clearTimeout(timer);
+    }
+  }, [error, fadeAnim]);
 
   // Update addresses and fetch route when ride data is available
   useEffect(() => {
@@ -164,7 +186,6 @@ function RideDetailsScreen() {
     }
   };
 
-  // Booking logic remains unchanged
   const handleBookRide = async () => {
     if (!ride || !id) return;
     setError("");
@@ -190,7 +211,7 @@ function RideDetailsScreen() {
       }
       const { error: paymentError } = await stripe.presentPaymentSheet();
       if (paymentError) {
-        Alert.alert("Payment Error", paymentError.message);
+        setError(paymentError.message);
       } else {
         try {
           const rideResponse = await axios.post(
@@ -211,7 +232,6 @@ function RideDetailsScreen() {
             );
           }
         } catch (err: any) {
-          console.error(err);
           Alert.alert(
             "Error",
             "Payment succeeded, but failed to add you to the ride."
@@ -219,122 +239,111 @@ function RideDetailsScreen() {
         }
       }
     } catch (err: any) {
-      console.error(err);
-      setError(
-        err.response?.data?.error ||
-          "An error occurred while processing your payment."
-      );
+      // Instead of logging the raw error, extract a custom message.
+      const serverError =
+        err.response?.data?.error || err.response?.data?.message;
+      const errorMessage =
+        serverError && !serverError.includes("Request failed with status code 400")
+          ? serverError
+          : "An error occurred while processing your payment.";
+      setError(errorMessage);
     } finally {
       setBookingLoading(false);
     }
   };
 
-  if (loading) {
-    return (
-      <View style={styles.center}>
-        <ActivityIndicator size="large" color="#8C7B6B" />
-      </View>
-    );
-  }
-
-  if (error) {
-    return (
-      <View style={styles.center}>
-        <Text style={styles.errorText}>{error}</Text>
-      </View>
-    );
-  }
-
-  if (!ride) {
-    return (
-      <View style={styles.center}>
-        <Text style={styles.errorText}>Ride not found.</Text>
-      </View>
-    );
-  }
-
   return (
     <GestureHandlerRootView style={styles.container}>
-      {/* Back Button */}
-      <TouchableOpacity style={styles.backButton} onPress={() => router.back()}>
-        <Text style={styles.backButtonText}>
-          <Ionicons name="arrow-back" size={24} color="#FFF" />
-        </Text>
-      </TouchableOpacity>
+      {/* Inline Error Banner with fade effect */}
+      {error !== "" && (
+        <Animated.View style={[styles.errorBanner, { opacity: fadeAnim }]}>
+          <Text style={styles.errorText}>{error}</Text>
+        </Animated.View>
+      )}
 
-      {/* Full Screen Map */}
-      <MapView
-        ref={mapRef}
-        style={StyleSheet.absoluteFill}
-        initialRegion={{
-          latitude: originCoord ? originCoord.latitude : 37.78825,
-          longitude: originCoord ? originCoord.longitude : -122.4324,
-          latitudeDelta: 0.0922,
-          longitudeDelta: 0.0421,
-        }}
-        onMapReady={() => {
-          if (routeCoordinates.length) {
-            mapRef.current.fitToCoordinates(routeCoordinates, {
-              edgePadding: { top: 50, right: 50, bottom: 50, left: 50 },
-            });
-          }
-        }}
-      >
-        {originCoord && (
-          <Marker
-            coordinate={originCoord}
-            title="Origin"
-            description={ride.from}
-          />
-        )}
-        {destinationCoord && (
-          <Marker
-            coordinate={destinationCoord}
-            title="Destination"
-            description={ride.to}
-          />
-        )}
-        {routeCoordinates.length > 0 && (
-          <Polyline
-            coordinates={routeCoordinates}
-            strokeWidth={3}
-            strokeColor="hotpink"
-          />
-        )}
-      </MapView>
+      {/* Loading overlay */}
+      {loading && (
+        <View style={styles.loadingOverlay}>
+          <ActivityIndicator size="large" color="#8C7B6B" />
+        </View>
+      )}
 
-      {/* Draggable Bottom Sheet */}
-      <BottomSheet
-        ref={bottomSheetRef}
-        index={0} // Start collapsed (15% of screen height)
-        snapPoints={snapPoints}
-        onChange={handleSheetChanges}
-        enablePanDownToClose={false}
-        backgroundStyle={{ backgroundColor: "#fff" }}
-      >
-        <BottomSheetView style={styles.sheetContent}>
-          <Text style={styles.title}>Ride Details</Text>
-          <View style={styles.card}>
-            <Text style={styles.cardHeader}>
-              {ride.from} → {ride.to}
+      {/* Main content: render only if data has loaded and a ride exists */}
+      {!loading && ride && (
+        <>
+          <MapView
+            ref={mapRef}
+            style={StyleSheet.absoluteFill}
+            initialRegion={{
+              latitude: originCoord ? originCoord.latitude : 37.78825,
+              longitude: originCoord ? originCoord.longitude : -122.4324,
+              latitudeDelta: 0.0922,
+              longitudeDelta: 0.0421,
+            }}
+            onMapReady={() => {
+              if (routeCoordinates.length) {
+                mapRef.current?.fitToCoordinates(routeCoordinates, {
+                  edgePadding: { top: 50, right: 50, bottom: 50, left: 50 },
+                });
+              }
+            }}
+          >
+            {originCoord && (
+              <Marker coordinate={originCoord} title="Origin" description={ride.from} />
+            )}
+            {destinationCoord && (
+              <Marker coordinate={destinationCoord} title="Destination" description={ride.to} />
+            )}
+            {routeCoordinates.length > 0 && (
+              <Polyline
+                coordinates={routeCoordinates}
+                strokeWidth={3}
+                strokeColor="hotpink"
+              />
+            )}
+          </MapView>
+
+          {/* Back Button */}
+          <TouchableOpacity style={styles.backButton} onPress={() => router.back()}>
+            <Text style={styles.backButtonText}>
+              <Ionicons name="arrow-back" size={24} color="#FFF" />
             </Text>
-            <Text style={styles.cardText}>Date: {ride.date}</Text>
-            <Text style={styles.cardText}>Departure: {ride.departureTime}</Text>
-            <Text style={styles.cardText}>
-              Passengers: {ride.currentPassengers.length}/{ride.maxPassengers}
-            </Text>
-            <Text style={styles.cardText}>Cost: ${ride.cost}</Text>
-            <Text style={styles.cardText}>Driver: {ride.ownerName}</Text>
-          </View>
-          {bookingLoading ? (
-            <ActivityIndicator size="large" color="#8C7B6B" />
-          ) : (
-            <TouchableOpacity style={styles.bookButton} onPress={handleBookRide}>
-              <Text style={styles.bookButtonText}>Book This Ride</Text>
-            </TouchableOpacity>
-          )}
-        </BottomSheetView>
-      </BottomSheet>
+          </TouchableOpacity>
+
+          {/* Draggable Bottom Sheet */}
+          <BottomSheet
+            ref={bottomSheetRef}
+            index={0} // Start collapsed (15% of screen height)
+            snapPoints={snapPoints}
+            onChange={handleSheetChanges}
+            enablePanDownToClose={false}
+            backgroundStyle={{ backgroundColor: "#fff" }}
+          >
+            <BottomSheetView style={styles.sheetContent}>
+              <Text style={styles.title}>Ride Details</Text>
+              <View style={styles.card}>
+                <Text style={styles.cardHeader}>
+                  {ride.from} → {ride.to}
+                </Text>
+                <Text style={styles.cardText}>Date: {ride.date}</Text>
+                <Text style={styles.cardText}>Departure: {ride.departureTime}</Text>
+                <Text style={styles.cardText}>
+                  Passengers: {ride.currentPassengers.length}/{ride.maxPassengers}
+                </Text>
+                <Text style={styles.cardText}>Cost: ${ride.cost}</Text>
+                <Text style={styles.cardText}>Driver: {ride.ownerName}</Text>
+              </View>
+              {bookingLoading ? (
+                <ActivityIndicator size="large" color="#8C7B6B" />
+              ) : (
+                <TouchableOpacity style={styles.bookButton} onPress={handleBookRide}>
+                  <Text style={styles.bookButtonText}>Book This Ride</Text>
+                </TouchableOpacity>
+              )}
+            </BottomSheetView>
+          </BottomSheet>
+        </>
+      )}
     </GestureHandlerRootView>
   );
 }
@@ -344,10 +353,12 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: "#F8F3E9",
   },
-  center: {
-    flex: 1,
+  loadingOverlay: {
+    ...StyleSheet.absoluteFillObject,
     justifyContent: "center",
     alignItems: "center",
+    zIndex: 20,
+    backgroundColor: "rgba(255, 255, 255, 0.7)",
   },
   backButton: {
     position: "absolute",
@@ -359,6 +370,21 @@ const styles = StyleSheet.create({
     paddingHorizontal: 10,
     borderRadius: 5,
   },
+  errorBanner: {
+    position: "absolute",
+    top: 90,
+    left: 20,
+    right: 20,
+    padding: 10,
+    backgroundColor: "#F8D7DA",
+    borderRadius: 5,
+    zIndex: 30,
+  },
+  errorText: {
+    color: "#721C24",
+    textAlign: "center",
+    fontSize: 16,
+  },
   backButtonText: {
     color: "#fff",
     fontSize: 16,
@@ -366,11 +392,6 @@ const styles = StyleSheet.create({
   sheetContent: {
     flex: 1,
     padding: 10,
-  },
-  errorText: {
-    color: "red",
-    textAlign: "center",
-    marginTop: 20,
   },
   title: {
     fontSize: 24,
