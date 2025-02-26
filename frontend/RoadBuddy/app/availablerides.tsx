@@ -90,7 +90,7 @@ export default function AvailableRides() {
 
   function sortRides(criterion: keyof SortConfig | 'default', rides: Ride[]) {
     const sortConfig: SortConfig = {
-        id: (a, b) => parseInt(a.id) - parseInt(b.id),
+        id: (a, b) => a.id.localeCompare(b.id),
         from: (a, b) => a.from.localeCompare(b.from),
         to: (a, b) => a.to.localeCompare(b.to),
         departure: (a, b) => new Date(a.departureTime).getTime() - new Date(b.departureTime).getTime(),
