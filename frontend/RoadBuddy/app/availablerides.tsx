@@ -11,6 +11,7 @@ import {
   TouchableOpacity,
 } from "react-native";
 import axios from "axios";
+import {Picker} from '@react-native-picker/picker';
 import { Ionicons } from "@expo/vector-icons";
 import { BASE_URL } from "../configs/base-url";
 import { router, useNavigation } from "expo-router";
@@ -38,7 +39,11 @@ export default function AvailableRides() {
 
   const [rides, setRides] = useState<Ride[]>([]);
   const [loading, setLoading] = useState<boolean>(true);
+  //Used in table sort
   const [refreshRides, setRefresh] = useState<boolean>(false);
+  const [sortDescent, setDescent] = useState<boolean>(false);
+  const [selectedCriterion, setCriterion] = useState<string>("date");
+
   const [error, setError] = useState<string>("");
 
   useEffect(() => {
@@ -89,21 +94,27 @@ export default function AvailableRides() {
   };
 
   function sortRides(criterion: keyof SortConfig | 'default', rides: Ride[]) {
+    setDescent(!sortDescent);
     const sortConfig: SortConfig = {
-        id: (a, b) => a.id.localeCompare(b.id),
-        from: (a, b) => a.from.localeCompare(b.from),
-        to: (a, b) => a.to.localeCompare(b.to),
-        departure: (a, b) => new Date(a.departureTime).getTime() - new Date(b.departureTime).getTime(),
-        cost: (a, b) => a.cost-b.cost,
-        maxPassengers: (a, b) => a.maxPassengers - b.maxPassengers,
-        ownerName: (a, b) => a.ownerName.localeCompare(b.ownerName),  
-        default: (a, b) => new Date(`${a.date}T${a.departureTime}`).getTime() - new Date(`${b.date}T${b.departureTime}`).getTime()
+        id: (a, b) => a.id.localeCompare(b.id) * (sortDescent ? -1 : 1),
+        from: (a, b) => a.from.localeCompare(b.from) * (sortDescent ? -1 : 1),
+        to: (a, b) => a.to.localeCompare(b.to) * (sortDescent ? -1 : 1),
+        cost: (a, b) => (a.cost - b.cost) * (sortDescent ? -1 : 1),
+        maxPassengers: (a, b) => (a.maxPassengers - b.maxPassengers) * (sortDescent ? -1 : 1),
+        ownerName: (a, b) => a.ownerName.localeCompare(b.ownerName) * (sortDescent ? -1 : 1),
+        default: (a, b) => (new Date(`${a.date}T${a.departureTime}`).getTime() - new Date(`${b.date}T${b.departureTime}`).getTime()) * (sortDescent ? -1 : 1)
     };
+
     const sortFunction = sortConfig[criterion] ?? sortConfig['default'];
     rides.sort(sortFunction);
     setRides(rides);
     setRefresh(!refreshRides);
   }
+  function updatePicker(criterion:string){
+    setCriterion(criterion);
+    setDescent(false);
+  }
+
 
   return (
     <SafeAreaView style={styles.safeArea}>
@@ -126,12 +137,27 @@ export default function AvailableRides() {
               placeholder="Search"
               placeholderTextColor="#5C4B3D"
             />
-            
-          </View>
-          <TouchableOpacity style={styles.sortButton} onPress={() => sortRides('', rides)}>
-              <Ionicons name="arrow-back" size={24} color="#FFF" />
+            {/* Sort Picker*/}
+            <Picker
+            style = {styles.sortPicker}
+            selectedValue={selectedCriterion}
+            onValueChange={(itemValue) =>
+              updatePicker(itemValue)
+            }>
+            <Picker.Item label="Date/Time" value="default" color="#000"/>
+            <Picker.Item label="Ride ID" value="id" color="#000"/>
+            <Picker.Item label="From" value="from" color="#000"/>
+            <Picker.Item label="To" value="to" color="#000"/>
+            <Picker.Item label="Cost" value="cost" />
+            <Picker.Item label="Max Passengers" value="maxPassengers" color="#000"/>
+            <Picker.Item label="Ride Provider" value="ownerName" color="#000"/>
+            </Picker>
+            {/*sort button(old)*/}
+            <TouchableOpacity style={styles.sortButton} onPress={() => sortRides(selectedCriterion, rides)}>
+              <Ionicons name="arrow-back" size={24} color="#000" />
             </TouchableOpacity>
-        </View>
+          </View>
+          </View>
 
         {loading && <ActivityIndicator size="large" color="#8C7B6B" style={{ marginTop: 20 }} />}
         {error ? (
@@ -175,7 +201,13 @@ const styles = StyleSheet.create({
   },
   sortButton: {
     position: "absolute",
-    marginRight: 5,
+    marginLeft:290
+  },
+  sortPicker: {
+    position: "absolute",
+    height: 50, 
+    width: 150,
+    zIndex: 1,
   },
   carIcon: {
     marginBottom: 5,
