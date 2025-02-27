@@ -138,7 +138,12 @@ export default function AvailableRides() {
               placeholderTextColor="#5C4B3D"
             />
             {/* Sort Picker*/}
-            <Picker
+            {/*sort button(old)*/}
+            <TouchableOpacity style={styles.sortButton} onPress={() => sortRides(selectedCriterion, rides)}>
+              <Ionicons name="arrow-back" size={24} color="#000" />
+            </TouchableOpacity>
+          </View>
+          <Picker
             style = {styles.sortPicker}
             selectedValue={selectedCriterion}
             onValueChange={(itemValue) =>
@@ -152,11 +157,6 @@ export default function AvailableRides() {
             <Picker.Item label="Max Passengers" value="maxPassengers" color="#000"/>
             <Picker.Item label="Ride Provider" value="ownerName" color="#000"/>
             </Picker>
-            {/*sort button(old)*/}
-            <TouchableOpacity style={styles.sortButton} onPress={() => sortRides(selectedCriterion, rides)}>
-              <Ionicons name="arrow-back" size={24} color="#000" />
-            </TouchableOpacity>
-          </View>
           </View>
 
         {loading && <ActivityIndicator size="large" color="#8C7B6B" style={{ marginTop: 20 }} />}
@@ -205,8 +205,9 @@ const styles = StyleSheet.create({
   },
   sortPicker: {
     position: "absolute",
-    height: 50, 
-    width: 150,
+    height: 10, 
+    width: 200,
+    marginLeft: 150,
     zIndex: 1,
   },
   carIcon: {
