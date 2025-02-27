@@ -1,4 +1,4 @@
-// firebase-config.ts
+
 import { initializeApp } from "firebase/app";
 import { 
   GoogleAuthProvider, 
