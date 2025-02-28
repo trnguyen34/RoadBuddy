@@ -4,11 +4,11 @@ from datetime import (
 from functools import wraps
 import os
 import stripe
+import pytz
 from flask import (
     Flask, redirect, render_template, request,
     make_response, session, url_for, jsonify
 )
-from flask_socketio import SocketIO, emit
 import google.cloud
 import firebase_admin
 from firebase_admin import credentials, firestore, auth
@@ -25,8 +25,6 @@ from utils import (
 app = Flask(__name__)
 CORS(app, supports_credentials=True)
 app.secret_key = os.getenv('SECRET_KEY')
-
-socketio = SocketIO(app, cors_allowed_origins="*")
 
 app.config['SESSION_COOKIE_SECURE'] = False
 app.config['SESSION_COOKIE_HTTPONLY'] = True
@@ -787,13 +785,15 @@ def api_get_all_notifications():
         notifications_list = []
         batch = db.batch()
 
+        pacific_tz = pytz.timezone("America/Los_Angeles")
+
         for doc in notifications:
             data = doc.to_dict()
 
             created_at = data.get("createdAt")
-            formatted_date = (
-                datetime.utcfromtimestamp(created_at.timestamp()).strftime("%m-%d-%Y %H:%M:%S UTC")
-            )
+            utc_dt = datetime.utcfromtimestamp(created_at.timestamp()).replace(tzinfo=pytz.utc)
+            pacific_dt = utc_dt.astimezone(pacific_tz)
+            formatted_date = pacific_dt.strftime("%m-%d-%Y %I:%M %p PT")
 
             notifications_list.append({
                 "id": doc.id,

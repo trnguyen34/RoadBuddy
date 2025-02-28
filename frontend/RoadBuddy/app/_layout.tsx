@@ -91,6 +91,13 @@ export default function RootLayout() {
             headerShown: false,
           }}
         />
+        <Stack.Screen 
+          name="notificationscreen" 
+          options={{
+            title: "notificationscreen",
+            headerShown: false,
+          }}
+        />
       </Stack>
     </GestureHandlerRootView>
   );

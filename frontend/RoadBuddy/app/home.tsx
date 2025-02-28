@@ -47,7 +47,7 @@ export default function Home() {
 
       if (isLoggedIn) {
         fetchUnreadNotifications();
-        const interval = setInterval(fetchUnreadNotifications, 3000);
+        const interval = setInterval(fetchUnreadNotifications, 2000);
 
         return () => clearInterval(interval);
       }
