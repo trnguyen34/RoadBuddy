@@ -1,11 +1,15 @@
-from datetime import timedelta
+from datetime import (
+    timedelta, datetime
+)
 from functools import wraps
 import os
 import stripe
+import pytz
 from flask import (
     Flask, redirect, render_template, request,
     make_response, session, url_for, jsonify
 )
+import google.cloud
 import firebase_admin
 from firebase_admin import credentials, firestore, auth
 from firebase_admin.auth import InvalidIdTokenError, EmailAlreadyExistsError
@@ -15,7 +19,7 @@ from flask_cors import CORS
 from utils import (
     is_duplicate_car, is_duplicate_ride, print_json, check_required_fields,
     remove_ride_from_user, remove_user_from_ride_passenger, add_user_to_ride_passenger,
-    get_document_from_db
+    get_document_from_db, store_notification
 )
 
 app = Flask(__name__)
@@ -477,7 +481,14 @@ def api_request_ride():
         rides_joined.append(ride_id)
         user_doc_ref.update({'ridesJoined': rides_joined})
 
-        return jsonify({"message": "User has been used to the ride."}), 201
+        start = ride_doc.get("from")
+        destination = ride_doc.get("to")
+        ride_owner = ride_doc.get("ownerID")
+        user_name = session.get('user', {}).get('name')
+        message = f"{user_name} has booked a ride with you.\nFrom: {start}\nTo: {destination}"
+        store_notification(db, ride_owner, ride_id, message)
+
+        return jsonify({"message": "User has been added to the ride."}), 201
 
     except FirebaseError as e:
         return jsonify({
@@ -654,7 +665,7 @@ def get_coming_up_rides():
     except Exception as e:
         return jsonify({"error": "An unexpected error occurred.", "details": str(e)}), 500
 
-@app.route('/api/user-id', methods=["GET"])
+@app.route('/api/user-id', methods=['GET'])
 @auth_required
 def api_get_user_id():
     """Return the authenticated user's ID"""
@@ -668,7 +679,7 @@ def api_get_user_id():
     except Exception as e:
         return jsonify({"error": "An unexpected error occurred", "details": str(e)}), 500
 
-@app.route('/api/cancel-ride', methods=["POST"])
+@app.route('/api/cancel-ride', methods=['POST'])
 @auth_required
 def api_cancel_ride():
     """Cancel a ride"""
@@ -726,6 +737,86 @@ def api_cancel_ride():
 
         return jsonify({"error": "User is not a passenger in this ride."}), 400
 
+    except Exception as e:
+        return jsonify({"error": "An unexpected error occurred", "details": str(e)}), 500
+
+@app.route('/api/unread-notifications-count', methods=['GET'])
+@auth_required
+def api_get_unread_notifications_count():
+    """
+    Fetch the number of unread notifications.
+    """
+    try:
+        user_id = get_user_id()
+        if user_id is None:
+            return jsonify({"error": "User not unauthorized"}), 401
+
+        user_ref = db.collection('users').document(user_id).get()
+        user_data = user_ref.to_dict()
+        unread_count = user_data.get("unread_notification_count", 0)
+        return jsonify({"unread_count": unread_count}), 200
+
+    except FirebaseError as e:
+        return jsonify({
+            "error": "Failed to look up number of rnread notifications",
+            "details": str(e)
+        }), 500
+    except Exception as e:
+        return jsonify({"error": "An unexpected error occurred", "details": str(e)}), 500
+
+@app.route('/api/get-notifications', methods=['GET'])
+def api_get_all_notifications():
+    """
+    Fetch all notifications for a user.
+    """
+    user_id = get_user_id()
+    if user_id is None:
+        return jsonify({"error": "User not unauthorized"}), 401
+
+    try:
+        user_ref = db.collection('users').document(user_id)
+        notifications_ref = user_ref.collection("notifications")
+        notifications = (
+            notifications_ref
+            .order_by("createdAt", direction=google.cloud.firestore.Query.DESCENDING)
+            .stream()
+        )
+
+        notifications_list = []
+        batch = db.batch()
+
+        pacific_tz = pytz.timezone("America/Los_Angeles")
+
+        for doc in notifications:
+            data = doc.to_dict()
+
+            created_at = data.get("createdAt")
+            utc_dt = datetime.utcfromtimestamp(created_at.timestamp()).replace(tzinfo=pytz.utc)
+            pacific_dt = utc_dt.astimezone(pacific_tz)
+            formatted_date = pacific_dt.strftime("%m-%d-%Y %I:%M %p PT")
+
+            notifications_list.append({
+                "id": doc.id,
+                "message": data.get("message"),
+                "read": data.get("read"),  # Keep original state in response
+                "rideId": data.get("rideId"),
+                "createdAt": formatted_date
+            })
+
+            if not data.get("read", False):
+                batch.update(doc.reference, {"read": True})
+
+        batch.commit()
+
+        user_ref.update({"unread_notification_count": 0})
+
+        return jsonify({"notifications": notifications_list}), 200
+
+    except FirebaseError as e:
+        return jsonify({
+            "error": "Failed to look up number of rnread notifications",
+            "details": str(e)
+        }), 500
     except Exception as e:
         return jsonify({"error": "An unexpected error occurred", "details": str(e)}), 500
 
