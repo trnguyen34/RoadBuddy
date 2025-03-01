@@ -432,7 +432,7 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.2,
     shadowRadius: 4,
     elevation: 2,
-    marginTop: 10,
+    marginTop: 5,
   },
   bookButtonText: {
     fontSize: 16,

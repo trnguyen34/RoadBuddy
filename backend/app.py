@@ -731,7 +731,7 @@ def api_cancel_ride():
                 remove_ride_id = remove_ride_from_user(db, user_id, ride_id, "ridesJoined")
                 if not remove_passengers:
                     add_user_to_ride_passenger(db, user_id, ride_id, "currentPassengers")
-                    return jsonify({"error": "Ride failed to cancell"}), 400
+                    return jsonify({"error": "Ride failed to cancel"}), 400
                 return jsonify({"message": "Ride successfully cancelled"}), 201
             return jsonify({"error": "Ride failed to cancell"}), 400
 
