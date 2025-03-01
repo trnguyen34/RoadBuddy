@@ -216,6 +216,7 @@ def get_document_from_db(db, doc_id, collection_name):
         print("error")
         return {"success": False, "error": str(e), "code": 500}
 
+
 def store_notification(db, ride_owner, ride_id, message):
     """
     Stores the notification inside the user's document and initializes unread_count if missing.
