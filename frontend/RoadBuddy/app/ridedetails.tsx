@@ -1,3 +1,4 @@
+
 import React, { useEffect, useState, useRef, useMemo, useCallback } from "react";
 import {
   View,
@@ -205,7 +206,7 @@ function RideDetailsScreen() {
       );
       if (response.status === 201) {
         Alert.alert("Success", response.data.message || "Ride cancelled successfully");
-        router.push("/cominguprides");
+        router.replace("/cominguprides");
       } else {
         Alert.alert("Error", response.data.error || "Failed to cancel this ride.");
       }
@@ -232,9 +233,7 @@ function RideDetailsScreen() {
 
   if (!ride) {
     return (
-      <View style={styles.center}>
-        <Text style={styles.errorText}>Ride not found.</Text>
-      </View>
+      console.log("Loading...")
     );
   }
 

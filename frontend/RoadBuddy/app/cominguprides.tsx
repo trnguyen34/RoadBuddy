@@ -1,4 +1,4 @@
-// app/cominguprides.tsx
+
 import React, { useEffect, useState } from "react";
 import {
   SafeAreaView,
@@ -75,10 +75,9 @@ function ComingUpRides() {
     fetchRides();
   }, []);
 
-  // Function to handle pull-to-refresh
   const handleRefresh = () => {
-    setRefreshing(true); // Show refresh indicator
-    fetchRides(); // Refetch rides
+    setRefreshing(true);
+    fetchRides();
   };
 
   const renderRideItem = ({ item }: { item: Ride }) => {
@@ -119,7 +118,7 @@ function ComingUpRides() {
   return (
     <SafeAreaView style={styles.safeArea}>
       <View style={[styles.headerContainer]}>
-        <TouchableOpacity style={styles.backButton} onPress={() => router.back()}>
+        <TouchableOpacity style={styles.backButton} onPress={() => router.replace('/home')}>
           <Ionicons name="arrow-back" size={24} color="#FFF" />
         </TouchableOpacity>
         <Ionicons name="car-outline" size={40} color="#FFF" style={styles.carIcon} />
