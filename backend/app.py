@@ -507,10 +507,11 @@ def create_payment_sheet():
     data = request.get_json()
     if not data:
         return jsonify({"error": "Invalid JSON payload"}), 400
-
+    print_json(data)
     required_fields = [
       'rideId',
-      'amount'
+      'amount',
+      'refund'
     ]
 
     missing_response = check_required_fields(data, required_fields)
@@ -530,16 +531,17 @@ def create_payment_sheet():
         return jsonify({"error": "User not authenticated"}), 401
 
     ride_owner_id = ride_doc.get('ownerID')
-    if ride_owner_id == user_id:
+    refund = bool(data.get('refund').strip())
+    if ride_owner_id == user_id and not refund:
         return jsonify({"error": "User cannot book its own ride."}), 400
 
     max_passengers = ride_doc.get('maxPassengers')
     curr_passengers = ride_doc.get('currentPassengers') or []
-    if len(curr_passengers) >= max_passengers:
+    if len(curr_passengers) >= max_passengers and not refund:
         return jsonify({"error": "Ride is full"}), 400
 
-    if user_id in curr_passengers:
-        return jsonify({"error": "User already requested this ride."}), 400
+    if user_id in curr_passengers and not refund:
+        return jsonify({"error": "User already a passenger of this ride."}), 400
 
     try:
         amount_cents = int(float(data.get('amount')) * 100)
@@ -712,15 +714,8 @@ def api_cancel_ride():
         current_passengers = ride_data.get("currentPassengers", [])
 
         if user_id == ride_owner_id:
-            if len(current_passengers) == 0:
-                ride_doc_ref.delete()
-                remove_ride_id = remove_ride_from_user(db, user_id, ride_id, "ridesPosted")
-                if remove_ride_id:
-                    return jsonify({"message": "Ride successfully deleted by owner"}), 201
-                return jsonify({"error": "Ride failed to delete by owner"}), 400
-
             return jsonify({
-                "error": "Owner cannot delete a ride that has at least one passenger in it."
+                "error": "You cannot cancel your own ride, you must delete it."
                 }), 400
 
         if user_id in current_passengers:
@@ -729,7 +724,7 @@ def api_cancel_ride():
             )
             if remove_passengers:
                 remove_ride_id = remove_ride_from_user(db, user_id, ride_id, "ridesJoined")
-                if not remove_passengers:
+                if not remove_ride_id:
                     add_user_to_ride_passenger(db, user_id, ride_id, "currentPassengers")
                     return jsonify({"error": "Ride failed to cancel"}), 400
 
@@ -748,6 +743,71 @@ def api_cancel_ride():
             return jsonify({"error": "Ride failed to cancell"}), 400
 
         return jsonify({"error": "User is not a passenger in this ride."}), 400
+
+    except Exception as e:
+        return jsonify({"error": "An unexpected error occurred", "details": str(e)}), 500
+
+@app.route('/api/delete-ride', methods=['POST'])
+def api_delete_ride():
+    """
+    Delete a ride
+    """
+    data = request.get_json()
+    if not data:
+        return jsonify({"error": "Invalid JSON payload"}), 400
+
+    required_fields = [
+      'rideId',
+    ]
+
+    missing_response = check_required_fields(data, required_fields)
+    if missing_response:
+        return jsonify(missing_response[0]), missing_response[1]
+
+    user_id = get_user_id()
+    if user_id is None:
+        return jsonify({"error": "User not unauthorized"}), 401
+
+    try:
+        ride_id = data.get('rideId')
+        ride_doc_ref = db.collection('rides').document(ride_id)
+        ride_doc = ride_doc_ref.get()
+        if not ride_doc.exists:
+            return jsonify({"error": "Ride not found"}), 404
+
+        ride_data = ride_doc.to_dict()
+        ride_owner_id = ride_data.get("ownerID")
+        current_passengers = ride_data.get("currentPassengers", [])
+
+        if user_id != ride_owner_id:
+            return jsonify({
+                "error": "Only the owner of this ride can delete it."
+                }), 400
+
+        start = ride_doc.get("from")
+        destination = ride_doc.get("to")
+        user_name = session.get('user', {}).get('name')
+        cost = ride_doc.get("cost")
+        message = (
+            f"${cost} has been refunded to you."
+            f"{user_name} (ride's owner) has delete his ride.\n"
+            f"From: {start}\n"
+            f"To: {destination}"
+        )
+
+        for passenger_id in current_passengers:
+            remove_user_from_ride_passenger(db, passenger_id, ride_id, "currentPassengers")
+            remove_ride_from_user(db, passenger_id, ride_id, "ridesJoined")
+            store_notification(db, passenger_id, ride_id, message)
+
+        remove_ride_id = remove_ride_from_user(db, user_id, ride_id, "ridesPosted")
+        if remove_ride_id:
+            ride_doc_ref.delete()
+            return jsonify({"message": "Ride successfully deleted"}), 201
+
+        return jsonify({
+            "error": "All passengers have been removed but ride failed to delete."
+        }), 400
 
     except Exception as e:
         return jsonify({"error": "An unexpected error occurred", "details": str(e)}), 500

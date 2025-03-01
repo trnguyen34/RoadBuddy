@@ -14,9 +14,13 @@ import { useLocalSearchParams, router } from "expo-router";
 import axios from "axios";
 import { BASE_URL } from "../configs/base-url";
 import MapView, { Marker, Polyline } from "react-native-maps";
+import { StripeProvider, useStripe } from "@stripe/stripe-react-native";
 import BottomSheet, { BottomSheetView } from "@gorhom/bottom-sheet";
 import { googlePlaceApi } from "../configs/google-api";
 import { Ionicons } from "@expo/vector-icons";
+
+const STRIPE_PUBLISHABLE_KEY =
+  "pk_test_51MjBbNDiM3EAos9ocETiK2jsHzePLkUvL95YrsEwpCgThRFn4EI0eFyNl55l7jsJzEHoHbGXOyfDm9HYTLKLsKHw00jukt7PIy";
 
 interface Ride {
   id: string;
@@ -86,6 +90,8 @@ function RideDetailsScreen() {
   const [destinationAddress, setDestinationAddress] = useState<string>("");
 
   const [currentUserId, setCurrentUserId] = useState<string | null>(null);
+
+  const stripe = useStripe();
 
   const { id } = useLocalSearchParams();
   const mapRef = useRef<MapView>(null);
@@ -198,6 +204,17 @@ function RideDetailsScreen() {
 
   const handleCancelRide = async () => {
     setCancellingLoading(true);
+    Alert.alert(
+      "Refund Notice",
+      `Canceling this ride will not result in a refund. Do you want to proceed?`,
+      [
+        { text: "Cancel", onPress: () => setCancellingLoading(false), style: "cancel" },
+        { text: "Proceed", onPress: () => processeCancelRide() },
+      ]
+    );
+  }
+
+  const processeCancelRide = async () => {
     try {
       const response = await axios.post(
         `${BASE_URL}/api/cancel-ride`,
@@ -222,7 +239,6 @@ function RideDetailsScreen() {
     }
   };
 
-
   if (error && ride === null) {
     return (
       <View style={styles.center}>
@@ -236,6 +252,108 @@ function RideDetailsScreen() {
       console.log("Loading...")
     );
   }
+
+  const handleDeleteRide = async () => {
+    if (currentUserId !== ride.ownerID) return;
+    setError("");
+    setCancellingLoading(true);
+  
+    if (ride.currentPassengers.length > 0) {
+      Alert.alert(
+        "Refund Notice",
+        `Deleting this ride, you must refund all passengers plus a 20% fee. Do you want to proceed?`,
+        [
+          { text: "Cancel", onPress: () => setCancellingLoading(false), style: "cancel" },
+          { text: "Proceed", onPress: () => processDeleteRideWithPassengers() },
+        ]
+      );
+    } else {
+      deleteRideWithNoPassenger();
+    }
+  };
+  
+  const processDeleteRideWithPassengers = async () => {
+    try {
+      const cost = (ride.currentPassengers.length * ride.cost) * 1.20;
+      const amount = String(cost);
+      const refund = "true";
+  
+      const response = await axios.post(
+        `${BASE_URL}/api/payment-sheet`,
+        { rideId: id, amount, refund },
+        { withCredentials: true }
+      );
+  
+      const { paymentIntent, ephemeralKey, customer } = response.data;
+      const { error: initError } = await stripe.initPaymentSheet({
+        paymentIntentClientSecret: paymentIntent,
+        customerEphemeralKeySecret: ephemeralKey,
+        customerId: customer,
+        merchantDisplayName: "RoadBuddy Inc",
+      });
+  
+      if (initError) {
+        setError(initError.message || "Error initializing payment.");
+        setCancellingLoading(false);
+        return;
+      }
+  
+      const { error: paymentError } = await stripe.presentPaymentSheet();
+      if (paymentError) {
+        setError(paymentError.message);
+      } else {
+        try {
+          const response = await axios.post(
+            `${BASE_URL}/api/delete-ride`,
+            { rideId: id },
+            { withCredentials: true }
+          );
+          if (response.status === 201) {
+            Alert.alert("Success", response.data.message || "Ride deleted successfully");
+            router.replace("/cominguprides");
+          } else {
+            Alert.alert("Error", response.data.error || "Failed to delete this ride.");
+          }
+        } catch (err: any) {
+          Alert.alert("Error", "Payment succeeded, but failed to delete ride.");
+        }
+      }
+    } catch (err: any) {
+      const serverError = err.response?.data?.error || err.response?.data?.message;
+      const errorMessage =
+        serverError && !serverError.includes("Request failed with status code 400")
+          ? serverError
+          : "An error occurred while processing your payment.";
+      setError(errorMessage);
+    } finally {
+      setCancellingLoading(false);
+    }
+  };
+
+  const deleteRideWithNoPassenger = async () => {
+    try {
+      const response = await axios.post(
+        `${BASE_URL}/api/delete-ride`,
+        { rideId: id },
+        { withCredentials: true }
+      );
+      if (response.status === 201) {
+        Alert.alert("Success", response.data.message || "Ride deleted successfully");
+        router.replace("/cominguprides");
+      } else {
+        Alert.alert("Error", response.data.error || "Failed to delete this ride.");
+      }
+    } catch (err: any) {
+      const serverError = err.response?.data?.error || err.response?.data?.message;
+      const errorMessage =
+        serverError && !serverError.includes("Request failed with status code 400")
+          ? serverError
+          : "An error occurred while processing your payment.";
+      setError(errorMessage);
+    } finally {
+      setCancellingLoading(false);
+    }
+  };
 
   const cancelButtonText = currentUserId === ride.ownerID ? "Delete This Ride" : "Cancel This Ride";
 
@@ -304,7 +422,10 @@ function RideDetailsScreen() {
           {cancellingLoading ? (
             <ActivityIndicator size="large" color="#8C7B6B" />
           ) : (
-            <TouchableOpacity style={styles.cancelButton} onPress={handleCancelRide}>
+            <TouchableOpacity 
+              style={styles.cancelButton} 
+              onPress={currentUserId === ride.ownerID ? handleDeleteRide : handleCancelRide}
+            >
               <Text style={styles.cancelButtonText}>{cancelButtonText}</Text>
             </TouchableOpacity>
           )}
@@ -421,5 +542,9 @@ const styles = StyleSheet.create({
 });
 
 export default function RideDetails() {
-  return <RideDetailsScreen />;
+  return( 
+    <StripeProvider publishableKey={STRIPE_PUBLISHABLE_KEY}>
+      <RideDetailsScreen />
+    </StripeProvider>
+  );
 }
