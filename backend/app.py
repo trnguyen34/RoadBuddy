@@ -2,7 +2,6 @@ from datetime import (
     timedelta, datetime
 )
 from functools import wraps
-import math
 import os
 import stripe
 import pytz
