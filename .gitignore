@@ -2,4 +2,5 @@
 .venv
 .env
 .vscode
+base-url.tsx
 __pycache__/
