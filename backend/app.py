@@ -15,7 +15,7 @@ from firebase_admin import credentials, firestore, auth
 from firebase_admin.auth import InvalidIdTokenError, EmailAlreadyExistsError
 from firebase_admin.exceptions import FirebaseError
 from flask_cors import CORS
-
+from apscheduler.schedulers.background import BackgroundScheduler
 from utils import (
     is_duplicate_car, is_duplicate_ride, print_json, check_required_fields,
     remove_ride_from_user, remove_user_from_ride_passenger, add_user_to_ride_passenger,
@@ -909,6 +909,45 @@ def api_home():
     print_json(user)
 
     return jsonify({"message": f"Welcome {user_name}!"}), 200
+
+def delete_past_rides():
+    """
+    Deletes past rides from Firestore.
+    """
+    try:
+        print("Checking for past rides...")
+        pacific_zone = pytz.timezone("America/Los_Angeles")
+        now_pacific = datetime.now(pacific_zone)
+
+        rides_ref = (
+            db.collection("rides")
+            .where("date", "<", now_pacific.strftime("%Y-%m-%d"))
+            .stream()
+        )
+
+        for ride in rides_ref:
+            print("Deleting ", ride.id)
+
+            ride_id = ride.id
+            ride_data = ride.to_dict()
+
+            ride_owner = ride_data.get("ownerID")
+            current_passengers = ride_data.get("currentPassengers", [])
+
+            remove_ride_from_user(db, ride_owner, ride_id, "ridesPosted")
+
+            for passenger_id in current_passengers:
+                print("deleting passenger:", passenger_id)
+                remove_ride_from_user(db, passenger_id, ride_id, "ridesJoined")
+
+            db.collection("rides").document(ride_id).delete()
+
+    except Exception as e:
+        print(f"Error deleting past rides: {e}")
+
+scheduler = BackgroundScheduler()
+scheduler.add_job(delete_past_rides, "interval", minutes=5)
+scheduler.start()
 
 if __name__ == "__main__":
     app.run(host='0.0.0.0', port=8090, debug=True, threaded=True)
