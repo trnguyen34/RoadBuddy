@@ -10,6 +10,7 @@ import {
 } from "react-native";
 import axios from "axios";
 import { router } from "expo-router";
+import { Ionicons } from "@expo/vector-icons";
 import { signInWithEmailAndPassword } from "firebase/auth";
 import { auth } from "../firebase/app/firebase-config";
 import { BASE_URL } from "../configs/base-url"
@@ -22,10 +23,33 @@ export default function Signup() {
   const [success, setSuccess] = useState<string>("");
   const [loading, setLoading] = useState<boolean>(false);
 
+  const isValidEmail = (email: string): boolean => {
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    return emailRegex.test(email);
+  };
+
   const handleSignup = async () => {
     setError("");
     setSuccess("");
     setLoading(true);
+
+    if (!name.trim() || !email.trim() || !password.trim()) {
+      setError("One or more fields are empty");
+      setLoading(false);
+      return;
+    }
+
+    if (!isValidEmail(email)) {
+      setError("Please enter a valid email address.");
+      setLoading(false);
+      return;
+    }
+
+    if (password.length < 6) {
+      setError("Password must be at least 6 characters long.");
+      setLoading(false);
+      return;
+    }
 
     try {
       const response = await axios.post(`${BASE_URL}/api/signup`, {
@@ -70,8 +94,8 @@ export default function Signup() {
 return (
     <View style={styles.container}>
         <View style={styles.backgroundRectangle} />
-        <TouchableOpacity onPress={() => router.push("/start")} style={styles.backButton}>
-            <Text>&#8592;</Text>
+        <TouchableOpacity style={styles.backButton} onPress={() => router.back()}>
+          <Ionicons name="arrow-back" size={24} color="#FFF" />
         </TouchableOpacity>
         <Text style={styles.title}>RoadBuddy</Text>
         <Image source={require('../assets/images/destination.png')} style={styles.destinationImage} />
@@ -101,6 +125,7 @@ return (
               onChangeText={setPassword}
               secureTextEntry
             />
+            {error ? <Text style={styles.error}>{error}</Text> : null}
             <TouchableOpacity style={styles.signUpButton} onPress={handleSignup} disabled={loading}>
               {loading ? (
                 <ActivityIndicator color="#fff" />
@@ -145,7 +170,7 @@ const styles = StyleSheet.create({
       color: '#382f27',
   },
   loginContainer: {
-      width: 250,
+      width: 270,
       backgroundColor: 'white',
       padding: 30,
       borderRadius: 10,

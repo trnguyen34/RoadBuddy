@@ -15,10 +15,6 @@ const { width, height } = Dimensions.get("window");
 export default function Start() {
   const [loading, setLoading] = useState(false);
 
-  const handleLogin = async () => {
-    router.replace("/login");
-  };
-
   return (
     <View style={styles.container}>
       {/* Diagonal Background */}
@@ -38,7 +34,7 @@ export default function Start() {
       <View style={styles.buttonContainer}>
         <TouchableOpacity
           style={styles.signInButton}
-          onPress={handleLogin}
+          onPress={() => router.push("/login")}
           disabled={loading}
         >
           {loading ? (
