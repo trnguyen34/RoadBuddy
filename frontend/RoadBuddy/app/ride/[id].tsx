@@ -21,7 +21,6 @@ import { Ionicons } from "@expo/vector-icons";
 
 const STRIPE_PUBLISHABLE_KEY =
   "pk_test_51MjBbNDiM3EAos9ocETiK2jsHzePLkUvL95YrsEwpCgThRFn4EI0eFyNl55l7jsJzEHoHbGXOyfDm9HYTLKLsKHw00jukt7PIy";
-const GOOGLE_MAPS_API_KEY = googlePlaceApi;
 
 interface Ride {
   id: string;
@@ -155,7 +154,7 @@ function RideDetailsScreen() {
     try {
       const url = `https://maps.googleapis.com/maps/api/directions/json?origin=${encodeURIComponent(
         origin
-      )}&destination=${encodeURIComponent(destination)}&key=${GOOGLE_MAPS_API_KEY}`;
+      )}&destination=${encodeURIComponent(destination)}&key=${googlePlaceApi}`;
       const response = await axios.get(url);
       if (response.data.routes && response.data.routes.length) {
         const route = response.data.routes[0];
@@ -192,9 +191,10 @@ function RideDetailsScreen() {
     setBookingLoading(true);
     try {
       const amount = String(ride.cost);
+      const refund = "false"
       const response = await axios.post(
         `${BASE_URL}/api/payment-sheet`,
-        { rideId: id, amount },
+        { rideId: id, amount, refund },
         { withCredentials: true }
       );
       const { paymentIntent, ephemeralKey, customer } = response.data;
@@ -432,7 +432,7 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.2,
     shadowRadius: 4,
     elevation: 2,
-    marginTop: 10,
+    marginTop: 5,
   },
   bookButtonText: {
     fontSize: 16,
