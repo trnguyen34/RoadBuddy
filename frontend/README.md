@@ -1,4 +1,4 @@
-# Welcome to your Expo app 👋
+# Frontend 👋
 
 This is an [Expo](https://expo.dev) project created with [`create-expo-app`](https://www.npmjs.com/package/create-expo-app).
 
@@ -11,7 +11,7 @@ This is an [Expo](https://expo.dev) project created with [`create-expo-app`](htt
    ```
    also, sign up for an Expo account
 
-   for iOS: install Xcode via apple store and install command line tools (in settings -> locations)
+   for iOS: install Xcode via Apple Store and install command line tools (in settings -> locations)
    then install:
    ```bash
    brew update
