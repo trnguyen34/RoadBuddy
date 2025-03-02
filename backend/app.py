@@ -2,6 +2,7 @@ from datetime import (
     timedelta, datetime
 )
 from functools import wraps
+import math
 import os
 import stripe
 import pytz
@@ -507,7 +508,7 @@ def create_payment_sheet():
     data = request.get_json()
     if not data:
         return jsonify({"error": "Invalid JSON payload"}), 400
-    print_json(data)
+
     required_fields = [
       'rideId',
       'amount',
@@ -787,9 +788,9 @@ def api_delete_ride():
         start = ride_doc.get("from")
         destination = ride_doc.get("to")
         user_name = session.get('user', {}).get('name')
-        cost = ride_doc.get("cost")
+        cost = ride_doc.get("cost") * 1.20
         message = (
-            f"${cost} has been refunded to you."
+            f"${cost:.2f} has been refunded to you.\n"
             f"{user_name} (ride's owner) has delete his ride.\n"
             f"From: {start}\n"
             f"To: {destination}"
