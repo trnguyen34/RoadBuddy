@@ -28,7 +28,7 @@ export default function NotificationScreen() {
       const response = await axios.get(`${BASE_URL}/api/get-notifications`, { withCredentials: true });
       setNotifications(response.data.notifications);
     } catch (err) {
-      console.error("Error fetching notifications:", err.response || err);
+      console.error("Error fetching notifications:", err);
       setError("Failed to fetch notifications.");
     } finally {
       setLoading(false);

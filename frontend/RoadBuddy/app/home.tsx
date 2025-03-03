@@ -24,7 +24,7 @@ export default function Home() {
       setIsLoggedIn(true);
       setLoading(false);
     } catch (err) {
-      console.error("Error fetching home data:", err.response || err);
+      console.error("Error fetching home data:", err);
       setError("Failed to fetch home data.");
       setIsLoggedIn(false);
       setLoading(false);
@@ -103,8 +103,8 @@ export default function Home() {
         <TouchableOpacity onPress={() => router.push("/cominguprides")} style={styles.button}>
           <Text>My Rides</Text>
         </TouchableOpacity>
-        <TouchableOpacity onPress={() => handleButtonPress('My Requests')} style={styles.button}>
-          <Text>My Requests</Text>
+        <TouchableOpacity onPress={() => router.push("/postride")} style={styles.button}>
+          <Text>Post Ride</Text>
         </TouchableOpacity>
       </View>
 
@@ -138,7 +138,7 @@ export default function Home() {
       )}
 
       {/* Bottom Right Button */}
-      <TouchableOpacity onPress={() => router.push("/postride")} style={[styles.bottomRightButton, styles.bottomRightButton]}>
+      <TouchableOpacity onPress={() => handleButtonPress("messages")} style={[styles.bottomRightButton, styles.bottomRightButton]}>
         <Text style={{ color: 'black' }}>P</Text>
       </TouchableOpacity>
       <View style={styles.footer}>
