@@ -7,6 +7,7 @@ import { router } from "expo-router";
 import { Ionicons } from "@expo/vector-icons";
 import { useFocusEffect } from "@react-navigation/native";
 import { BASE_URL } from "../configs/base-url"
+import {Ride} from "./ride/ride";
 
 const { width } = Dimensions.get('window');
 
@@ -16,7 +17,7 @@ export default function Home() {
   const [error, setError] = useState<string>("");
   const [unreadCount, setUnreadCount] = useState<number>(0);
   const [isLoggedIn, setIsLoggedIn] = useState<boolean>(false);
-  const [rides, setRides] = useState([]);
+  const [rides, setRides] = useState<Ride[]>([]);
 
   const checkUserAuthentication = async () => {
     try {

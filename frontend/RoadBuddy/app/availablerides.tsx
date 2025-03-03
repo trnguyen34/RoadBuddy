@@ -15,18 +15,7 @@ import { Ionicons } from "@expo/vector-icons";
 import { BASE_URL } from "../configs/base-url";
 import { router, useNavigation } from "expo-router";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
-
-interface Ride {
-  id: string;
-  from: string;
-  to: string;
-  date: string;
-  departureTime: string;
-  cost: number;
-  currentPassengers: string[];
-  maxPassengers: number;
-  ownerName: string;
-}
+import {Ride} from "./ride/ride";
 
 export default function AvailableRides() {
   const insets = useSafeAreaInsets();
