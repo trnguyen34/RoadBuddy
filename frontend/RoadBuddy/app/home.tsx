@@ -16,6 +16,7 @@ export default function Home() {
   const [error, setError] = useState<string>("");
   const [unreadCount, setUnreadCount] = useState<number>(0);
   const [isLoggedIn, setIsLoggedIn] = useState<boolean>(false);
+  const [rides, setRides] = useState([]);
 
   const checkUserAuthentication = async () => {
     try {
@@ -41,12 +42,25 @@ export default function Home() {
     }
   };
 
+  const fetchUpcomingRides = async () => {
+    try {
+      const response = await axios.get(`${BASE_URL}/api/coming-up-rides`, { withCredentials: true });
+      const sortedRides = response.data.rides
+        .sort((a: { date: string }, b: { date: string }) => new Date(a.date).getTime() - new Date(b.date).getTime())
+        .slice(0, 2);
+      setRides(sortedRides);
+    } catch (error) {
+      console.error("Error fetching upcoming rides:", error);
+    }
+  };
+
   useFocusEffect(
     useCallback(() => {
       checkUserAuthentication();
 
       if (isLoggedIn) {
         fetchUnreadNotifications();
+        fetchUpcomingRides();
         const interval = setInterval(fetchUnreadNotifications, 2000);
 
         return () => clearInterval(interval);
@@ -94,9 +108,14 @@ export default function Home() {
       </View>
 
       <View style={styles.events}>
-        <Text style={styles.eventItem}>Upcoming Events</Text>
-        <Text style={styles.eventItem}>Event 1</Text>
-        <Text style={styles.eventItem}>Event 2</Text>
+        <Text style={styles.eventItem}>Upcoming Rides</Text>
+        {rides.length > 0 ? (
+          rides.map((ride, index) => (
+            <Text key={index} style={styles.eventItem}>{ride.from} → {ride.to} at {ride.departureTime}</Text>
+          ))
+        ) : (
+          <Text style={styles.eventItem}>No upcoming rides</Text>
+        )}
       </View>
 
       <View style={styles.buttons}>
