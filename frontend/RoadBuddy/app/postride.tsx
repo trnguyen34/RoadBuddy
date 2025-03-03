@@ -58,47 +58,58 @@ export default function PostRide() {
   };
 
   const handlePostRide = async () => {
-    // Ensure the user selects a valid "From" address
+    setLoading(true);
+    setError('');
+
     if (!fromAddress.trim()) {
-      Alert.alert('Error', 'Please enter a valid "From" address.');
+      setError("Please enter a valid 'From' address.");
+      setLoading(false);
       return;
     }
   
-    // Ensure the user selects a valid "To" address
     if (!toAddress.trim()) {
-      Alert.alert('Error', 'Please enter a valid "To" address.');
+      setError("Please enter a valid 'To' address.");
+      setLoading(false);
       return;
     }
 
-    // Before posting, validate that the chosen date is not in the past
     const todayString = new Date().toISOString().split('T')[0];
     if (dateText < todayString) {
-      Alert.alert('Error', 'Date cannot be in the past.');
+      setError("Date cannot be in the past.");
+      setLoading(false);
       return;
     }
-    // If the selected date is today, ensure the departure time is not in the past.
+
     if (dateText === todayString && isTimeInPast(departureTime)) {
-      Alert.alert('Error', 'Departure time cannot be in the past.');
+      setError("Departure time cannot be in the past.");
+      setLoading(false);
       return;
     }
 
     if (!departureTimeText.trim()) {
-      Alert.alert('Error', 'Please fill in the "departure time" field.');
+      setError("Please fill in the 'departure time' field.");
+      setLoading(false);
       return;
     }
 
     if (!maxPassengers.trim()) {  
-      Alert.alert('Error', 'Please fill in the "maximum passengers" field.');
+      setError("Please fill in the 'maximum passengers' field.");
+      setLoading(false);
       return;
     }
 
-    if (!cost.replace('$ ', '')) {  // Remove the dollar sign before checking
-      Alert.alert('Error', 'Please fill in the "cost" field.');
+    if (!cost.replace('$ ', '')) {
+      setError("Please fill in the 'cost' field.");
+      setLoading(false);
       return;
     }
 
-    setLoading(true);
-    setError('');
+    if (parseFloat(cost) < 0.5) {
+      setError("Cost must be at least $0.50");
+      setLoading(false);
+      return;
+    }
+
     try {
       const payload = {
         from: fromAddress,
@@ -323,6 +334,8 @@ export default function PostRide() {
         }}
       />
 
+      {error ? <Text style={styles.error}>{error}</Text> : null}
+
       {loading ? (
         <ActivityIndicator size="large" color="#007bff" />
       ) : (
@@ -330,8 +343,6 @@ export default function PostRide() {
           <Text style={styles.buttonText}>Post Ride</Text>
         </TouchableOpacity>
       )}
-
-      {error ? <Text style={styles.error}>{error}</Text> : null}
     </View>
   );
 }
@@ -379,18 +390,12 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   button: {
-    backgroundColor: '#007bff',  // Blue background
-    paddingVertical: 10,
-    paddingHorizontal: 20,
-    borderRadius: 8,  // Rounded corners
-    alignItems: 'center',
-    justifyContent: 'center',
     marginTop: 10,
-    elevation: 3,  // Adds shadow for Android
-    shadowColor: '#000',  // Adds shadow for iOS
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.3,
-    shadowRadius: 3,
+    width: '100%',
+    padding: 10,
+    backgroundColor: '#C5D1AB',
+    borderRadius: 20,
+    alignItems: 'center',
   },
   buttonText: {
     color: '#fff',  // White text

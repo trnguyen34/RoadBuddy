@@ -281,4 +281,9 @@ const styles = StyleSheet.create({
     justifyContent: "center",
     alignItems: "center",
   },
+  title: {
+    fontSize: 36,
+    fontWeight: "bold",
+    color: "#5C4B3D",
+  },
 });
