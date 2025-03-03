@@ -24,7 +24,7 @@ export default function Home() {
       setIsLoggedIn(true);
       setLoading(false);
     } catch (err) {
-      console.error("Error fetching home data:", err.response || err);
+      console.error("Error fetching home data:", err);
       setError("Failed to fetch home data.");
       setIsLoggedIn(false);
       setLoading(false);
