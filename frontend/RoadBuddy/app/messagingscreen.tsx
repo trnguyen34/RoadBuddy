@@ -62,6 +62,7 @@ const styles = StyleSheet.create({
     position: "absolute",
     left: 30,
     top: 60,
+    zIndex: 1,
   },
   chatContainer: {
     flexGrow: 1,
