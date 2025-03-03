@@ -49,6 +49,7 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: "#F6F1E9",
     padding: 16,
+    paddingTop: 50,
   },
   header: {
     fontSize: 24,
@@ -60,7 +61,7 @@ const styles = StyleSheet.create({
   backButton: {
     position: "absolute",
     left: 30,
-    top: 45,
+    top: 60,
   },
   chatContainer: {
     flexGrow: 1,
