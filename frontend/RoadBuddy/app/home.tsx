@@ -1,9 +1,11 @@
 
 import { View, Text, Image, TouchableOpacity, ScrollView, StyleSheet, Button, ActivityIndicator } from 'react-native';
-import { Dimensions } from 'react-native'; // for responsive styling
-import React, { useEffect, useState } from "react";
+import { Dimensions } from 'react-native';
+import React, { useEffect, useState, useCallback } from "react";
 import axios from "axios";
 import { router } from "expo-router";
+import { Ionicons } from "@expo/vector-icons";
+import { useFocusEffect } from "@react-navigation/native";
 import { BASE_URL } from "../configs/base-url"
 
 const { width } = Dimensions.get('window');
@@ -12,23 +14,59 @@ export default function Home() {
   const [message, setMessage] = useState<string>("");
   const [loading, setLoading] = useState<boolean>(true);
   const [error, setError] = useState<string>("");
+  const [unreadCount, setUnreadCount] = useState<number>(0);
+  const [isLoggedIn, setIsLoggedIn] = useState<boolean>(false);
+  const [rides, setRides] = useState([]);
 
-  useEffect(() => {
-    axios
-      .get(`${BASE_URL}/api/home`, {
-        withCredentials: true,
-      })
-      .then((response) => {
-        console.log("Response data:", response.data); 
-        setMessage(response.data.message);
-        setLoading(false);
-      })
-      .catch((err) => {
-        console.error("Error fetching home data:", err.response || err);
-        setError("Failed to fetch home data.");
-        setLoading(false);
-      });
-  }, []);
+  const checkUserAuthentication = async () => {
+    try {
+      const response = await axios.get(`${BASE_URL}/api/home`, { withCredentials: true });
+      setMessage(response.data.message);
+      setIsLoggedIn(true);
+      setLoading(false);
+    } catch (err) {
+      console.error("Error fetching home data:", err);
+      setError("Failed to fetch home data.");
+      setIsLoggedIn(false);
+      setLoading(false);
+    }
+  };
+
+  const fetchUnreadNotifications = async () => {
+    if (!isLoggedIn) return;
+    try {
+      const response = await axios.get(`${BASE_URL}/api/unread-notifications-count`, { withCredentials: true });
+      setUnreadCount(response.data.unread_count || 0);
+    } catch (error) {
+      console.error("Error fetching unread notifications count:", error);
+    }
+  };
+
+  const fetchUpcomingRides = async () => {
+    try {
+      const response = await axios.get(`${BASE_URL}/api/coming-up-rides`, { withCredentials: true });
+      const sortedRides = response.data.rides
+        .sort((a: { date: string }, b: { date: string }) => new Date(a.date).getTime() - new Date(b.date).getTime())
+        .slice(0, 2);
+      setRides(sortedRides);
+    } catch (error) {
+      console.error("Error fetching upcoming rides:", error);
+    }
+  };
+
+  useFocusEffect(
+    useCallback(() => {
+      checkUserAuthentication();
+
+      if (isLoggedIn) {
+        fetchUnreadNotifications();
+        fetchUpcomingRides();
+        const interval = setInterval(fetchUnreadNotifications, 2000);
+
+        return () => clearInterval(interval);
+      }
+    }, [isLoggedIn])
+  );
 
   if (loading) {
     return (
@@ -70,17 +108,22 @@ export default function Home() {
       </View>
 
       <View style={styles.events}>
-        <Text style={styles.eventItem}>Upcoming Events</Text>
-        <Text style={styles.eventItem}>Event 1</Text>
-        <Text style={styles.eventItem}>Event 2</Text>
+        <Text style={styles.eventItem}>Upcoming Rides</Text>
+        {rides.length > 0 ? (
+          rides.map((ride, index) => (
+            <Text key={index} style={styles.eventItem}>{ride.from} → {ride.to} at {ride.departureTime}</Text>
+          ))
+        ) : (
+          <Text style={styles.eventItem}>No upcoming rides</Text>
+        )}
       </View>
 
       <View style={styles.buttons}>
         <TouchableOpacity onPress={() => router.push("/cominguprides")} style={styles.button}>
           <Text>My Rides</Text>
         </TouchableOpacity>
-        <TouchableOpacity onPress={() => handleButtonPress('My Requests')} style={styles.button}>
-          <Text>My Requests</Text>
+        <TouchableOpacity onPress={() => router.push("/postride")} style={styles.button}>
+          <Text>Post Ride</Text>
         </TouchableOpacity>
       </View>
 
@@ -97,13 +140,24 @@ export default function Home() {
         <Text style={{ color: 'white' }}>Logout</Text>
       </TouchableOpacity>
 
-      {/* Bottom Left Button */}
-      <TouchableOpacity onPress={() => router.push("/requestride")} style={[styles.button, styles.bottomLeftButton]}>
-        <Text style={{ color: 'black' }}>R</Text>
-      </TouchableOpacity>
+      {/* Bottom Left Button - Notifications */}
+      {isLoggedIn && (
+        <TouchableOpacity onPress={() => router.push("/notificationscreen")} style={[styles.button, styles.bottomLeftButton]}>
+          {unreadCount > 0 ? (
+            <View style={styles.notificationIconContainer}>
+              <Ionicons name="notifications" size={24} color="black" />
+              <View style={styles.notificationBadge}>
+                <Text style={styles.badgeText}>{unreadCount}</Text>
+              </View>
+            </View>
+          ) : (
+            <Ionicons name="notifications-outline" size={24} color="black" />
+          )}
+        </TouchableOpacity>
+      )}
 
       {/* Bottom Right Button */}
-      <TouchableOpacity onPress={() => router.push("/postride")} style={[styles.bottomRightButton, styles.bottomRightButton]}>
+      <TouchableOpacity onPress={() => handleButtonPress("messages")} style={[styles.bottomRightButton, styles.bottomRightButton]}>
         <Text style={{ color: 'black' }}>P</Text>
       </TouchableOpacity>
       <View style={styles.footer}>
@@ -215,6 +269,27 @@ const styles = StyleSheet.create({
     borderRadius: 100,
     width: 50,
     alignItems: 'center',
+  },
+  notificationIconContainer: {
+    position: 'relative',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  notificationBadge: {
+    position: 'absolute',
+    top: -5,
+    right: -5,
+    backgroundColor: 'red',
+    borderRadius: 10,
+    width: 18,
+    height: 18,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  badgeText: {
+    color: 'white',
+    fontSize: 12,
+    fontWeight: 'bold',
   },
   error: {
     fontSize: 18,

@@ -3,6 +3,7 @@ import json
 from google.cloud.firestore import (
     ArrayRemove, ArrayUnion
 )
+from google.cloud import firestore
 from firebase_admin.exceptions import FirebaseError
 
 def is_duplicate_car(db, user_id, car_details):
@@ -214,3 +215,19 @@ def get_document_from_db(db, doc_id, collection_name):
     except Exception as e:
         print("error")
         return {"success": False, "error": str(e), "code": 500}
+
+
+def store_notification(db, ride_owner, ride_id, message):
+    """
+    Stores the notification inside the user's document and initializes unread_count if missing.
+    """
+    user_ref = db.collection('users').document(ride_owner)
+    notification_ref = user_ref.collection('notifications').document()
+    notification_ref.set({
+        'message': message,
+        'rideId': ride_id,
+        'read': False,
+        'createdAt': firestore.SERVER_TIMESTAMP
+    })
+
+    user_ref.set({"unread_notification_count": firestore.Increment(1)}, merge=True)

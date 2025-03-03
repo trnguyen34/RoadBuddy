@@ -1,4 +1,4 @@
-// app/availablerides.tsx
+
 import React, { useEffect, useState } from "react";
 import {
   SafeAreaView,
@@ -66,7 +66,7 @@ export default function AvailableRides() {
   }, []);
 
   const renderRideItem = ({ item }: { item: Ride }) => {
-    // We wrap each card in a TouchableOpacity to make it clickable
+    // Wrap each card in a TouchableOpacity to make it clickable
     return (
       <TouchableOpacity
         style={styles.rideCard}

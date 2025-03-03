@@ -1,21 +1,25 @@
-from datetime import timedelta
+from datetime import (
+    timedelta, datetime
+)
 from functools import wraps
 import os
 import stripe
+import pytz
 from flask import (
     Flask, redirect, render_template, request,
     make_response, session, url_for, jsonify
 )
+import google.cloud
 import firebase_admin
 from firebase_admin import credentials, firestore, auth
 from firebase_admin.auth import InvalidIdTokenError, EmailAlreadyExistsError
 from firebase_admin.exceptions import FirebaseError
 from flask_cors import CORS
-
+from apscheduler.schedulers.background import BackgroundScheduler
 from utils import (
     is_duplicate_car, is_duplicate_ride, print_json, check_required_fields,
     remove_ride_from_user, remove_user_from_ride_passenger, add_user_to_ride_passenger,
-    get_document_from_db
+    get_document_from_db, store_notification
 )
 
 app = Flask(__name__)
@@ -477,7 +481,14 @@ def api_request_ride():
         rides_joined.append(ride_id)
         user_doc_ref.update({'ridesJoined': rides_joined})
 
-        return jsonify({"message": "User has been used to the ride."}), 201
+        start = ride_doc.get("from")
+        destination = ride_doc.get("to")
+        ride_owner = ride_doc.get("ownerID")
+        user_name = session.get('user', {}).get('name')
+        message = f"{user_name} has booked a ride with you.\nFrom: {start}\nTo: {destination}"
+        store_notification(db, ride_owner, ride_id, message)
+
+        return jsonify({"message": "User has been added to the ride."}), 201
 
     except FirebaseError as e:
         return jsonify({
@@ -499,7 +510,8 @@ def create_payment_sheet():
 
     required_fields = [
       'rideId',
-      'amount'
+      'amount',
+      'refund'
     ]
 
     missing_response = check_required_fields(data, required_fields)
@@ -519,16 +531,17 @@ def create_payment_sheet():
         return jsonify({"error": "User not authenticated"}), 401
 
     ride_owner_id = ride_doc.get('ownerID')
-    if ride_owner_id == user_id:
+    refund = bool(data.get('refund').strip())
+    if ride_owner_id == user_id and not refund:
         return jsonify({"error": "User cannot book its own ride."}), 400
 
     max_passengers = ride_doc.get('maxPassengers')
     curr_passengers = ride_doc.get('currentPassengers') or []
-    if len(curr_passengers) >= max_passengers:
+    if len(curr_passengers) >= max_passengers and not refund:
         return jsonify({"error": "Ride is full"}), 400
 
-    if user_id in curr_passengers:
-        return jsonify({"error": "User already requested this ride."}), 400
+    if user_id in curr_passengers and not refund:
+        return jsonify({"error": "User already a passenger of this ride."}), 400
 
     try:
         amount_cents = int(float(data.get('amount')) * 100)
@@ -654,7 +667,7 @@ def get_coming_up_rides():
     except Exception as e:
         return jsonify({"error": "An unexpected error occurred.", "details": str(e)}), 500
 
-@app.route('/api/user-id', methods=["GET"])
+@app.route('/api/user-id', methods=['GET'])
 @auth_required
 def api_get_user_id():
     """Return the authenticated user's ID"""
@@ -668,7 +681,7 @@ def api_get_user_id():
     except Exception as e:
         return jsonify({"error": "An unexpected error occurred", "details": str(e)}), 500
 
-@app.route('/api/cancel-ride', methods=["POST"])
+@app.route('/api/cancel-ride', methods=['POST'])
 @auth_required
 def api_cancel_ride():
     """Cancel a ride"""
@@ -701,15 +714,8 @@ def api_cancel_ride():
         current_passengers = ride_data.get("currentPassengers", [])
 
         if user_id == ride_owner_id:
-            if len(current_passengers) == 0:
-                ride_doc_ref.delete()
-                remove_ride_id = remove_ride_from_user(db, user_id, ride_id, "ridesPosted")
-                if remove_ride_id:
-                    return jsonify({"message": "Ride successfully deleted by owner"}), 201
-                return jsonify({"error": "Ride failed to delete by owner"}), 400
-
             return jsonify({
-                "error": "Owner cannot delete a ride that has at least one passenger in it."
+                "error": "You cannot cancel your own ride, you must delete it."
                 }), 400
 
         if user_id in current_passengers:
@@ -718,14 +724,171 @@ def api_cancel_ride():
             )
             if remove_passengers:
                 remove_ride_id = remove_ride_from_user(db, user_id, ride_id, "ridesJoined")
-                if not remove_passengers:
+                if not remove_ride_id:
                     add_user_to_ride_passenger(db, user_id, ride_id, "currentPassengers")
-                    return jsonify({"error": "Ride failed to cancell"}), 400
+                    return jsonify({"error": "Ride failed to cancel"}), 400
+
+                start = ride_doc.get("from")
+                destination = ride_doc.get("to")
+                ride_owner = ride_doc.get("ownerID")
+                user_name = session.get('user', {}).get('name')
+                message = (
+                f"{user_name} has cancelled a ride with you.\n"
+                f"From: {start}\n"
+                f"To: {destination}"
+                )
+                store_notification(db, ride_owner, ride_id, message)
+
                 return jsonify({"message": "Ride successfully cancelled"}), 201
             return jsonify({"error": "Ride failed to cancell"}), 400
 
         return jsonify({"error": "User is not a passenger in this ride."}), 400
 
+    except Exception as e:
+        return jsonify({"error": "An unexpected error occurred", "details": str(e)}), 500
+
+@app.route('/api/delete-ride', methods=['POST'])
+def api_delete_ride():
+    """
+    Delete a ride
+    """
+    data = request.get_json()
+    if not data:
+        return jsonify({"error": "Invalid JSON payload"}), 400
+
+    required_fields = [
+      'rideId',
+    ]
+
+    missing_response = check_required_fields(data, required_fields)
+    if missing_response:
+        return jsonify(missing_response[0]), missing_response[1]
+
+    user_id = get_user_id()
+    if user_id is None:
+        return jsonify({"error": "User not unauthorized"}), 401
+
+    try:
+        ride_id = data.get('rideId')
+        ride_doc_ref = db.collection('rides').document(ride_id)
+        ride_doc = ride_doc_ref.get()
+        if not ride_doc.exists:
+            return jsonify({"error": "Ride not found"}), 404
+
+        ride_data = ride_doc.to_dict()
+        ride_owner_id = ride_data.get("ownerID")
+        current_passengers = ride_data.get("currentPassengers", [])
+
+        if user_id != ride_owner_id:
+            return jsonify({
+                "error": "Only the owner of this ride can delete it."
+                }), 400
+
+        start = ride_doc.get("from")
+        destination = ride_doc.get("to")
+        user_name = session.get('user', {}).get('name')
+        cost = ride_doc.get("cost") * 1.20
+        message = (
+            f"${cost:.2f} has been refunded to you.\n"
+            f"{user_name} (ride's owner) has delete his ride.\n"
+            f"From: {start}\n"
+            f"To: {destination}"
+        )
+
+        for passenger_id in current_passengers:
+            remove_user_from_ride_passenger(db, passenger_id, ride_id, "currentPassengers")
+            remove_ride_from_user(db, passenger_id, ride_id, "ridesJoined")
+            store_notification(db, passenger_id, ride_id, message)
+
+        remove_ride_id = remove_ride_from_user(db, user_id, ride_id, "ridesPosted")
+        if remove_ride_id:
+            ride_doc_ref.delete()
+            return jsonify({"message": "Ride successfully deleted"}), 201
+
+        return jsonify({
+            "error": "All passengers have been removed but ride failed to delete."
+        }), 400
+
+    except Exception as e:
+        return jsonify({"error": "An unexpected error occurred", "details": str(e)}), 500
+
+@app.route('/api/unread-notifications-count', methods=['GET'])
+@auth_required
+def api_get_unread_notifications_count():
+    """
+    Fetch the number of unread notifications.
+    """
+    try:
+        user_id = get_user_id()
+        if user_id is None:
+            return jsonify({"error": "User not unauthorized"}), 401
+
+        user_ref = db.collection('users').document(user_id).get()
+        user_data = user_ref.to_dict()
+        unread_count = user_data.get("unread_notification_count", 0)
+        return jsonify({"unread_count": unread_count}), 200
+
+    except FirebaseError as e:
+        return jsonify({
+            "error": "Failed to look up number of rnread notifications",
+            "details": str(e)
+        }), 500
+    except Exception as e:
+        return jsonify({"error": "An unexpected error occurred", "details": str(e)}), 500
+
+@app.route('/api/get-notifications', methods=['GET'])
+def api_get_all_notifications():
+    """
+    Fetch all notifications for a user.
+    """
+    user_id = get_user_id()
+    if user_id is None:
+        return jsonify({"error": "User not unauthorized"}), 401
+
+    try:
+        user_ref = db.collection('users').document(user_id)
+        notifications_ref = user_ref.collection("notifications")
+        notifications = (
+            notifications_ref
+            .order_by("createdAt", direction=google.cloud.firestore.Query.DESCENDING)
+            .stream()
+        )
+
+        notifications_list = []
+        batch = db.batch()
+
+        pacific_tz = pytz.timezone("America/Los_Angeles")
+
+        for doc in notifications:
+            data = doc.to_dict()
+
+            created_at = data.get("createdAt")
+            utc_dt = datetime.utcfromtimestamp(created_at.timestamp()).replace(tzinfo=pytz.utc)
+            pacific_dt = utc_dt.astimezone(pacific_tz)
+            formatted_date = pacific_dt.strftime("%m-%d-%Y %I:%M %p PT")
+
+            notifications_list.append({
+                "id": doc.id,
+                "message": data.get("message"),
+                "read": data.get("read"),  # Keep original state in response
+                "rideId": data.get("rideId"),
+                "createdAt": formatted_date
+            })
+
+            if not data.get("read", False):
+                batch.update(doc.reference, {"read": True})
+
+        batch.commit()
+
+        user_ref.update({"unread_notification_count": 0})
+
+        return jsonify({"notifications": notifications_list}), 200
+
+    except FirebaseError as e:
+        return jsonify({
+            "error": "Failed to look up number of rnread notifications",
+            "details": str(e)
+        }), 500
     except Exception as e:
         return jsonify({"error": "An unexpected error occurred", "details": str(e)}), 500
 
@@ -746,6 +909,45 @@ def api_home():
     print_json(user)
 
     return jsonify({"message": f"Welcome {user_name}!"}), 200
+
+def delete_past_rides():
+    """
+    Deletes past rides from Firestore.
+    """
+    try:
+        print("Checking for past rides...")
+        pacific_zone = pytz.timezone("America/Los_Angeles")
+        now_pacific = datetime.now(pacific_zone)
+
+        rides_ref = (
+            db.collection("rides")
+            .where("date", "<", now_pacific.strftime("%Y-%m-%d"))
+            .stream()
+        )
+
+        for ride in rides_ref:
+            print("Deleting ", ride.id)
+
+            ride_id = ride.id
+            ride_data = ride.to_dict()
+
+            ride_owner = ride_data.get("ownerID")
+            current_passengers = ride_data.get("currentPassengers", [])
+
+            remove_ride_from_user(db, ride_owner, ride_id, "ridesPosted")
+
+            for passenger_id in current_passengers:
+                print("deleting passenger:", passenger_id)
+                remove_ride_from_user(db, passenger_id, ride_id, "ridesJoined")
+
+            db.collection("rides").document(ride_id).delete()
+
+    except Exception as e:
+        print(f"Error deleting past rides: {e}")
+
+scheduler = BackgroundScheduler()
+scheduler.add_job(delete_past_rides, "interval", minutes=5)
+scheduler.start()
 
 if __name__ == "__main__":
     app.run(host='0.0.0.0', port=8090, debug=True, threaded=True)

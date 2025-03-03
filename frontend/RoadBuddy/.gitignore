@@ -38,3 +38,4 @@ yarn-error.*
 app-example
 
 configs/api.tsx
+configs/base-url.tsx
