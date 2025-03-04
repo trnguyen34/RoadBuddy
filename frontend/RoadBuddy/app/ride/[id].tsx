@@ -18,21 +18,10 @@ import MapView, { Marker, Polyline } from "react-native-maps";
 import BottomSheet, { BottomSheetView } from "@gorhom/bottom-sheet";
 import { googlePlaceApi } from "../../configs/google-api";
 import { Ionicons } from "@expo/vector-icons";
-
+import {Ride} from "./ride";
 const STRIPE_PUBLISHABLE_KEY =
   "pk_test_51MjBbNDiM3EAos9ocETiK2jsHzePLkUvL95YrsEwpCgThRFn4EI0eFyNl55l7jsJzEHoHbGXOyfDm9HYTLKLsKHw00jukt7PIy";
 
-interface Ride {
-  id: string;
-  from: string;
-  to: string;
-  date: string;
-  departureTime: string;
-  cost: number;
-  currentPassengers: string[];
-  maxPassengers: number;
-  ownerName: string;
-}
 
 interface Coordinate {
   latitude: number;
