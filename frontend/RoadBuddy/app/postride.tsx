@@ -12,7 +12,9 @@ import {
   Platform,
   SafeAreaView,
   Modal,
+  Image,
 } from 'react-native';
+import { Ionicons } from "@expo/vector-icons";
 import { GooglePlacesAutocomplete } from 'react-native-google-places-autocomplete';
 import 'react-native-get-random-values';
 import axios from 'axios';
@@ -140,6 +142,10 @@ export default function PostRide() {
 
   return (
     <View style={styles.container}>
+      <TouchableOpacity style={styles.backButton} onPress={() => router.back()}>
+        <Ionicons name="arrow-back" size={24} color="#5C4B3D" />
+      </TouchableOpacity>
+      <Text style={styles.header}>Post Ride</Text>
       {/* "From" Autocomplete */}
       <SafeAreaView style={styles.autocompleteContainer}>
         <GooglePlacesAutocomplete
@@ -161,15 +167,16 @@ export default function PostRide() {
               color: '#3caf50',
             },
             textInputContainer: {
-              borderWidth: 1,
-              borderColor: '#ccc',
-              borderRadius: 8,
-              backgroundColor: '#fff',
+              width: '100%',
+              marginVertical: 10,
+              borderBottomWidth: 2,
+              borderBottomColor: '#C1B6A4',
+              fontSize: 16,
+              color: '#5C4B3D',
             },
             textInput: {
               height: 45,
               borderRadius: 8,
-              paddingHorizontal: 10,
               fontSize: 16,
               color: '#000',
             },
@@ -198,18 +205,20 @@ export default function PostRide() {
               color: '#3caf50',
             },
             textInputContainer: {
-              borderWidth: 1,
-              borderColor: '#ccc',
-              borderRadius: 8,
-              backgroundColor: '#fff',
+              width: '100%',
+              marginVertical: 10,
+              borderBottomWidth: 2,
+              borderBottomColor: '#C1B6A4',
+              fontSize: 16,
+              color: '#5C4B3D',
             },
             textInput: {
               height: 45,
               borderRadius: 8,
-              paddingHorizontal: 10,
               fontSize: 16,
               color: '#000',
             },
+            
           }}
         />
       </SafeAreaView>
@@ -353,22 +362,36 @@ const styles = StyleSheet.create({
     padding: 20,
     backgroundColor: '#fff',
   },
+  postContainer: {
+    width: 270,
+    backgroundColor: 'white',
+    padding: 30,
+    borderRadius: 10,
+    boxShadow: '0px 4px 6px rgba(0, 0, 0, 0.2)',
+    textAlign: 'center',
+    alignItems: 'center',
+},
   header: {
     fontSize: 28,
     fontWeight: 'bold',
     marginBottom: 20,
     textAlign: 'center',
+    paddingTop: 60,
   },
+  backButton: {
+    position: 'absolute',
+    top: 80,
+    left: 20,
+},
   input: {
-    height: 45,
-    borderColor: '#ccc',
-    borderWidth: 1,
-    borderRadius: 8,
-    paddingHorizontal: 10,
-    marginBottom: 12,
+    width: '100%',
+    padding: 10,
+    marginVertical: 10,
+    borderBottomWidth: 2,
+    borderBottomColor: '#C1B6A4',
     fontSize: 16,
-    justifyContent: 'center',
-  },
+    color: '#5C4B3D',
+},
   error: {
     color: 'red',
     textAlign: 'center',
