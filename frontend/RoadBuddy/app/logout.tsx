@@ -15,7 +15,7 @@ export default function Logout() {
       .post(`${BASE_URL}/api/logout`, {}, { withCredentials: true })
       .then((response) => {
         // On successful logout, navigate to the login screen
-        router.replace("/login");
+        router.replace("/start");
       })
       .catch((err) => {
         console.error("Logout error:", err);

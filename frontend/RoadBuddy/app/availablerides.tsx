@@ -110,7 +110,7 @@ export default function AvailableRides() {
         {/* Header Section */}
         <View style={styles.headerContainer}>
           {/* Back Button */}
-          <TouchableOpacity style={styles.backButton} onPress={() => navigation.goBack()}>
+          <TouchableOpacity style={styles.backButton} onPress={() => router.replace('/home')}>
             <Ionicons name="arrow-back" size={24} color="#FFF" />
           </TouchableOpacity>
 
