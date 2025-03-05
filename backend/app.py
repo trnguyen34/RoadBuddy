@@ -57,15 +57,6 @@ def get_user_id():
 def auth_required(f):
     """
     Decorator to enforce user authentication for a route.
-
-    Checks if 'user' exists in the session. If not, redirects to the login page. Otherwise, 
-    executes the wrapped function.
-
-    Args:
-        f (function): The route function to wrap and execute if authentication passes.
-
-    Returns:
-        function: The wrapped function if authenticated, or a redirect to the login page.
     """
     @wraps(f)
     def decorated_function(*args, **kwargs):
@@ -79,13 +70,6 @@ def auth_required(f):
 def authorize():
     """
     Authorizes a user based on a Bearer token in the request header.
-
-    Validates the token using Firebase. If valid, adds the user to the session 
-    and redirects to the home page. If invalid, returns a 401 Unauthorized response.
-
-    Returns:
-        Response: A redirect to the home page if authentication succeeds, or a 
-        401 Unauthorized response if it fails.
     """
     # Retrieve the token from the Authorization header.
     token = request.headers.get('Authorization')
@@ -111,13 +95,6 @@ def authorize():
 def index():
     """
     Redirects users to the appropriate page based on authentication status.
-
-    If the user is logged in (exists in the session), redirects to the home page. 
-    Otherwise, redirects to the login page.
-
-    Returns:
-        Response: A redirect to the home page for authenticated users, or the 
-        login page for unauthenticated users.
     """
     # if 'user' in session:
     #     return redirect(url_for('home'))
@@ -128,12 +105,6 @@ def index():
 def login():
     """
     Handles user login and redirects if already authenticated.
-
-    If the user is already logged in (exists in the session), redirects to the index page. 
-    Otherwise, renders the login page.
-
-    Returns:
-        Response: A redirect to the index page if authenticated, or the rendered login page.
     """
     if 'user' in session:
         return redirect(url_for('index'))
@@ -143,15 +114,6 @@ def login():
 def signup():
     """
     Handles user registration.
-
-    If the user is already logged in, redirects to the index page. For POST requests, 
-    collects user details, validates them, and creates a new user in Firestore. 
-    On success, adds the user to the session and redirects to the index page. 
-    On failure, displays an error message. For GET requests, renders the signup page.
-
-    Returns:
-        Response: A redirect to the index page for logged-in or newly registered users, 
-        or the rendered signup page with or without an error message.
     """
     if 'user' in session:
         return redirect(url_for('index'))
@@ -915,10 +877,7 @@ def api_home():
 @auth_required
 def post_message():
     """
-    Handles posting a message.
-
-    Returns:
-        JSON response if successful, or renders the postMessage form.
+    Posting a message. Returns: JSON response if successful, or renders the postMessage form.
     """
     if request.method == 'POST':
         # Ensure the request contains JSON data
