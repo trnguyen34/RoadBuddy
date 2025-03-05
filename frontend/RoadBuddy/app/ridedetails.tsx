@@ -1,3 +1,4 @@
+
 import React, { useEffect, useState, useRef, useMemo, useCallback } from "react";
 import {
   View,
@@ -9,19 +10,30 @@ import {
   Animated,
 } from "react-native";
 import { GestureHandlerRootView } from "react-native-gesture-handler";
-import { useLocalSearchParams } from "expo-router";
+import { useLocalSearchParams, router } from "expo-router";
 import axios from "axios";
-import { BASE_URL } from "../../configs/base-url";
-import { router } from "expo-router";
-import { StripeProvider, useStripe } from "@stripe/stripe-react-native";
+import { BASE_URL } from "../configs/base-url";
 import MapView, { Marker, Polyline } from "react-native-maps";
+import { StripeProvider, useStripe } from "@stripe/stripe-react-native";
 import BottomSheet, { BottomSheetView } from "@gorhom/bottom-sheet";
-import { googlePlaceApi } from "../../configs/google-api";
+import { googlePlaceApi } from "../configs/google-api";
 import { Ionicons } from "@expo/vector-icons";
-import {Ride} from "./ride";
+
 const STRIPE_PUBLISHABLE_KEY =
   "pk_test_51MjBbNDiM3EAos9ocETiK2jsHzePLkUvL95YrsEwpCgThRFn4EI0eFyNl55l7jsJzEHoHbGXOyfDm9HYTLKLsKHw00jukt7PIy";
 
+interface Ride {
+  id: string;
+  from: string;
+  to: string;
+  date: string;
+  departureTime: string;
+  cost: number;
+  currentPassengers: string[];
+  maxPassengers: number;
+  ownerName: string;
+  ownerID: string;
+}
 
 interface Coordinate {
   latitude: number;
@@ -68,7 +80,8 @@ function RideDetailsScreen() {
   const [loading, setLoading] = useState<boolean>(true);
   const [error, setError] = useState<string>("");
   const [bookingLoading, setBookingLoading] = useState<boolean>(false);
-  // Coordinates for markers and the route polyline
+  const [cancellingLoading, setCancellingLoading] = useState<boolean>(false);
+  // Coordinates for markers and route polyline
   const [originCoord, setOriginCoord] = useState<Coordinate | null>(null);
   const [destinationCoord, setDestinationCoord] = useState<Coordinate | null>(null);
   const [routeCoordinates, setRouteCoordinates] = useState<Coordinate[]>([]);
@@ -76,19 +89,22 @@ function RideDetailsScreen() {
   const [originAddress, setOriginAddress] = useState<string>("");
   const [destinationAddress, setDestinationAddress] = useState<string>("");
 
+  const [currentUserId, setCurrentUserId] = useState<string | null>(null);
+
   const stripe = useStripe();
+
   const { id } = useLocalSearchParams();
   const mapRef = useRef<MapView>(null);
-  // BottomSheet ref and snap points
   const bottomSheetRef = useRef<BottomSheet>(null);
   const snapPoints = useMemo(() => ["15%", "50%"], []);
   const handleSheetChanges = useCallback((index: number) => {
     console.log("BottomSheet index:", index);
   }, []);
 
-  // Animated value for error fade
+  // Animated value for error fade-out
   const fadeAnim = useRef(new Animated.Value(1)).current;
 
+  // Fetch ride details from the API
   useEffect(() => {
     const fetchRideDetails = async () => {
       try {
@@ -108,10 +124,22 @@ function RideDetailsScreen() {
     }
   }, [id]);
 
-  // When error changes, display it and then fade out after 2 seconds
+  // Fetch the current user's ID
+  useEffect(() => {
+    const fetchUserId = async () => {
+      try {
+        const response = await axios.get(`${BASE_URL}/api/user-id`, { withCredentials: true });
+        setCurrentUserId(response.data.userId);
+      } catch (err) {
+        console.error("Failed to fetch user ID");
+      }
+    };
+    fetchUserId();
+  }, []);
+
+  // When error occurs, show error banner and fade out after 2 seconds
   useEffect(() => {
     if (error !== "") {
-      // Reset opacity to fully visible
       fadeAnim.setValue(1);
       const timer = setTimeout(() => {
         Animated.timing(fadeAnim, {
@@ -126,7 +154,7 @@ function RideDetailsScreen() {
     }
   }, [error, fadeAnim]);
 
-  // Update addresses and fetch route when ride data is available
+  // Update addresses and fetch route directions when ride data is available
   useEffect(() => {
     if (ride) {
       setOriginAddress(ride.from);
@@ -136,8 +164,8 @@ function RideDetailsScreen() {
   }, [ride]);
 
   /**
-   * Fetches directions from the Google Directions API, decodes the polyline,
-   * and updates marker and route state.
+   * Fetches directions from the Google Directions API,
+   * decodes the polyline, and updates marker and route state.
    */
   const fetchRouteDirections = async (origin: string, destination: string) => {
     try {
@@ -174,18 +202,88 @@ function RideDetailsScreen() {
     }
   };
 
-  const handleBookRide = async () => {
-    if (!ride || !id) return;
-    setError("");
-    setBookingLoading(true);
+  const handleCancelRide = async () => {
+    setCancellingLoading(true);
+    Alert.alert(
+      "Refund Notice",
+      `Canceling this ride will not result in a refund. Do you want to proceed?`,
+      [
+        { text: "Cancel", onPress: () => setCancellingLoading(false), style: "cancel" },
+        { text: "Proceed", onPress: () => processeCancelRide() },
+      ]
+    );
+  }
+
+  const processeCancelRide = async () => {
     try {
-      const amount = String(ride.cost);
-      const refund = "false"
+      const response = await axios.post(
+        `${BASE_URL}/api/cancel-ride`,
+        { rideId: id },
+        { withCredentials: true }
+      );
+      if (response.status === 201) {
+        Alert.alert("Success", response.data.message || "Ride cancelled successfully");
+        router.replace("/cominguprides");
+      } else {
+        Alert.alert("Error", response.data.error || "Failed to cancel this ride.");
+      }
+    } catch (err: any) {
+      const serverError = err.response?.data?.error || err.response?.data?.message;
+      const errorMessage =
+        serverError && !serverError.includes("Request failed with status code 400")
+          ? serverError
+          : "An error occurred while processing your cancellation.";
+      setError(errorMessage);
+    } finally {
+      setCancellingLoading(false);
+    }
+  };
+
+  if (error && ride === null) {
+    return (
+      <View style={styles.center}>
+        <Text style={styles.errorText}>{error}</Text>
+      </View>
+    );
+  }
+
+  if (!ride) {
+    return (
+      console.log("Loading...")
+    );
+  }
+
+  const handleDeleteRide = async () => {
+    if (currentUserId !== ride.ownerID) return;
+    setError("");
+    setCancellingLoading(true);
+  
+    if (ride.currentPassengers.length > 0) {
+      Alert.alert(
+        "Refund Notice",
+        `Deleting this ride, you must refund all passengers plus a 20% fee. Do you want to proceed?`,
+        [
+          { text: "Cancel", onPress: () => setCancellingLoading(false), style: "cancel" },
+          { text: "Proceed", onPress: () => processDeleteRideWithPassengers() },
+        ]
+      );
+    } else {
+      deleteRideWithNoPassenger();
+    }
+  };
+  
+  const processDeleteRideWithPassengers = async () => {
+    try {
+      const cost = (ride.currentPassengers.length * ride.cost) * 1.20;
+      const amount = String(cost);
+      const refund = "true";
+  
       const response = await axios.post(
         `${BASE_URL}/api/payment-sheet`,
         { rideId: id, amount, refund },
         { withCredentials: true }
       );
+  
       const { paymentIntent, ephemeralKey, customer } = response.data;
       const { error: initError } = await stripe.initPaymentSheet({
         paymentIntentClientSecret: paymentIntent,
@@ -193,53 +291,71 @@ function RideDetailsScreen() {
         customerId: customer,
         merchantDisplayName: "RoadBuddy Inc",
       });
+  
       if (initError) {
         setError(initError.message || "Error initializing payment.");
-        setBookingLoading(false);
+        setCancellingLoading(false);
         return;
       }
+  
       const { error: paymentError } = await stripe.presentPaymentSheet();
       if (paymentError) {
         setError(paymentError.message);
       } else {
         try {
-          const rideResponse = await axios.post(
-            `${BASE_URL}/api/request-ride`,
+          const response = await axios.post(
+            `${BASE_URL}/api/delete-ride`,
             { rideId: id },
             { withCredentials: true }
           );
-          if (rideResponse.status === 200 || rideResponse.status === 201) {
-            Alert.alert(
-              "Success",
-              "Your payment is confirmed and you have been added to the ride!"
-            );
+          if (response.status === 201) {
+            Alert.alert("Success", response.data.message || "Ride deleted successfully");
             router.replace("/cominguprides");
           } else {
-            Alert.alert(
-              "Error",
-              "Payment succeeded, but there was an issue joining the ride."
-            );
+            Alert.alert("Error", response.data.error || "Failed to delete this ride.");
           }
         } catch (err: any) {
-          Alert.alert(
-            "Error",
-            "Payment succeeded, but failed to add you to the ride."
-          );
+          Alert.alert("Error", "Payment succeeded, but failed to delete ride.");
         }
       }
     } catch (err: any) {
-      // Instead of logging the raw error, extract a custom message.
-      const serverError =
-        err.response?.data?.error || err.response?.data?.message;
+      const serverError = err.response?.data?.error || err.response?.data?.message;
       const errorMessage =
         serverError && !serverError.includes("Request failed with status code 400")
           ? serverError
           : "An error occurred while processing your payment.";
       setError(errorMessage);
     } finally {
-      setBookingLoading(false);
+      setCancellingLoading(false);
     }
   };
+
+  const deleteRideWithNoPassenger = async () => {
+    try {
+      const response = await axios.post(
+        `${BASE_URL}/api/delete-ride`,
+        { rideId: id },
+        { withCredentials: true }
+      );
+      if (response.status === 201) {
+        Alert.alert("Success", response.data.message || "Ride deleted successfully");
+        router.replace("/cominguprides");
+      } else {
+        Alert.alert("Error", response.data.error || "Failed to delete this ride.");
+      }
+    } catch (err: any) {
+      const serverError = err.response?.data?.error || err.response?.data?.message;
+      const errorMessage =
+        serverError && !serverError.includes("Request failed with status code 400")
+          ? serverError
+          : "An error occurred while processing your payment.";
+      setError(errorMessage);
+    } finally {
+      setCancellingLoading(false);
+    }
+  };
+
+  const cancelButtonText = currentUserId === ride.ownerID ? "Delete This Ride" : "Cancel This Ride";
 
   return (
     <GestureHandlerRootView style={styles.container}>
@@ -250,89 +366,71 @@ function RideDetailsScreen() {
         </Animated.View>
       )}
 
-      {/* Loading overlay */}
-      {loading && (
-        <View style={styles.loadingOverlay}>
-          <ActivityIndicator size="large" color="#8C7B6B" />
-        </View>
-      )}
+      {/* Back Button */}
+      <TouchableOpacity style={styles.backButton} onPress={() => router.back()}>
+        <Ionicons name="arrow-back" size={24} color="#FFF" />
+      </TouchableOpacity>
 
-      {/* Main content: render only if data has loaded and a ride exists */}
-      {!loading && ride && (
-        <>
-          <MapView
-            ref={mapRef}
-            style={StyleSheet.absoluteFill}
-            initialRegion={{
-              latitude: originCoord ? originCoord.latitude : 37.78825,
-              longitude: originCoord ? originCoord.longitude : -122.4324,
-              latitudeDelta: 0.0922,
-              longitudeDelta: 0.0421,
-            }}
-            onMapReady={() => {
-              if (routeCoordinates.length) {
-                mapRef.current?.fitToCoordinates(routeCoordinates, {
-                  edgePadding: { top: 50, right: 50, bottom: 50, left: 50 },
-                });
-              }
-            }}
-          >
-            {originCoord && (
-              <Marker coordinate={originCoord} title="Origin" description={ride.from} />
-            )}
-            {destinationCoord && (
-              <Marker coordinate={destinationCoord} title="Destination" description={ride.to} />
-            )}
-            {routeCoordinates.length > 0 && (
-              <Polyline
-                coordinates={routeCoordinates}
-                strokeWidth={3}
-                strokeColor="hotpink"
-              />
-            )}
-          </MapView>
+      {/* Full Screen Map */}
+      <MapView
+        ref={mapRef}
+        style={StyleSheet.absoluteFill}
+        initialRegion={{
+          latitude: originCoord ? originCoord.latitude : 37.78825,
+          longitude: originCoord ? originCoord.longitude : -122.4324,
+          latitudeDelta: 0.0922,
+          longitudeDelta: 0.0421,
+        }}
+        onMapReady={() => {
+          if (routeCoordinates.length) {
+            mapRef.current?.fitToCoordinates(routeCoordinates, {
+              edgePadding: { top: 50, right: 50, bottom: 50, left: 50 },
+            });
+          }
+        }}
+      >
+        {originCoord && (
+          <Marker coordinate={originCoord} title="Origin" description={ride.from} />
+        )}
+        {destinationCoord && (
+          <Marker coordinate={destinationCoord} title="Destination" description={ride.to} />
+        )}
+        {routeCoordinates.length > 0 && (
+          <Polyline coordinates={routeCoordinates} strokeWidth={3} strokeColor="hotpink" />
+        )}
+      </MapView>
 
-          {/* Back Button */}
-          <TouchableOpacity style={styles.backButton} onPress={() => router.back()}>
-            <Text style={styles.backButtonText}>
-              <Ionicons name="arrow-back" size={24} color="#FFF" />
-            </Text>
-          </TouchableOpacity>
-
-          {/* Draggable Bottom Sheet */}
-          <BottomSheet
-            ref={bottomSheetRef}
-            index={0} // Start collapsed (15% of screen height)
-            snapPoints={snapPoints}
-            onChange={handleSheetChanges}
-            enablePanDownToClose={false}
-            backgroundStyle={{ backgroundColor: "#fff" }}
-          >
-            <BottomSheetView style={styles.sheetContent}>
-              <Text style={styles.title}>Ride Details</Text>
-              <View style={styles.card}>
-                <Text style={styles.cardHeader}>
-                  {ride.from} → {ride.to}
-                </Text>
-                <Text style={styles.cardText}>Date: {ride.date}</Text>
-                <Text style={styles.cardText}>Departure: {ride.departureTime}</Text>
-                <Text style={styles.cardText}>
-                  Passengers: {ride.currentPassengers.length}/{ride.maxPassengers}
-                </Text>
-                <Text style={styles.cardText}>Cost: ${ride.cost}</Text>
-                <Text style={styles.cardText}>Driver: {ride.ownerName}</Text>
-              </View>
-              {bookingLoading ? (
-                <ActivityIndicator size="large" color="#8C7B6B" />
-              ) : (
-                <TouchableOpacity style={styles.bookButton} onPress={handleBookRide}>
-                  <Text style={styles.bookButtonText}>Book This Ride</Text>
-                </TouchableOpacity>
-              )}
-            </BottomSheetView>
-          </BottomSheet>
-        </>
-      )}
+      {/* Draggable Bottom Sheet */}
+      <BottomSheet
+        ref={bottomSheetRef}
+        index={0} // Start collapsed (15% of screen height)
+        snapPoints={snapPoints}
+        onChange={handleSheetChanges}
+        enablePanDownToClose={false}
+        backgroundStyle={{ backgroundColor: "#fff" }}
+      >
+        <BottomSheetView style={styles.sheetContent}>
+          <Text style={styles.title}>Ride Details</Text>
+          <View style={styles.card}>
+            <Text style={styles.cardHeader}>{ride.from} → {ride.to}</Text>
+            <Text style={styles.cardText}>Date: {ride.date}</Text>
+            <Text style={styles.cardText}>Departure: {ride.departureTime}</Text>
+            <Text style={styles.cardText}>Passengers: {ride.currentPassengers.length}/{ride.maxPassengers}</Text>
+            <Text style={styles.cardText}>Cost: ${ride.cost}</Text>
+            <Text style={styles.cardText}>Driver: {ride.ownerName}</Text>
+          </View>
+          {cancellingLoading ? (
+            <ActivityIndicator size="large" color="#8C7B6B" />
+          ) : (
+            <TouchableOpacity 
+              style={styles.cancelButton} 
+              onPress={currentUserId === ride.ownerID ? handleDeleteRide : handleCancelRide}
+            >
+              <Text style={styles.cancelButtonText}>{cancelButtonText}</Text>
+            </TouchableOpacity>
+          )}
+        </BottomSheetView>
+      </BottomSheet>
     </GestureHandlerRootView>
   );
 }
@@ -342,12 +440,10 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: "#F8F3E9",
   },
-  loadingOverlay: {
-    ...StyleSheet.absoluteFillObject,
+  center: {
+    flex: 1,
     justifyContent: "center",
     alignItems: "center",
-    zIndex: 20,
-    backgroundColor: "rgba(255, 255, 255, 0.7)",
   },
   backButton: {
     position: "absolute",
@@ -372,10 +468,6 @@ const styles = StyleSheet.create({
   errorText: {
     color: "#721C24",
     textAlign: "center",
-    fontSize: 16,
-  },
-  backButtonText: {
-    color: "#fff",
     fontSize: 16,
   },
   sheetContent: {
@@ -414,6 +506,25 @@ const styles = StyleSheet.create({
   bookButton: {
     backgroundColor: "#C5D1AB",
     paddingVertical: 14,
+    paddingHorizontal: 20,
+    borderRadius: 20,
+    flex: 1,
+    marginRight: 5,
+    alignItems: "center",
+    shadowColor: "#000",
+    shadowOffset: { width: 1, height: 2 },
+    shadowOpacity: 0.2,
+    shadowRadius: 4,
+    elevation: 2,
+  },
+  bookButtonText: {
+    fontSize: 16,
+    fontWeight: "bold",
+    color: "#333",
+  },
+  cancelButton: {
+    backgroundColor: "#F44336",
+    paddingVertical: 14,
     borderRadius: 20,
     alignItems: "center",
     shadowColor: "#000",
@@ -423,15 +534,15 @@ const styles = StyleSheet.create({
     elevation: 2,
     marginTop: 5,
   },
-  bookButtonText: {
+  cancelButtonText: {
     fontSize: 16,
     fontWeight: "bold",
-    color: "#333",
+    color: "#FFF",
   },
 });
 
 export default function RideDetails() {
-  return (
+  return( 
     <StripeProvider publishableKey={STRIPE_PUBLISHABLE_KEY}>
       <RideDetailsScreen />
     </StripeProvider>

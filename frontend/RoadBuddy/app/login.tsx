@@ -2,6 +2,7 @@
 
 import React, { useState } from "react";
 import {
+  Image,
   View,
   Text,
   TextInput,
@@ -11,6 +12,7 @@ import {
 } from "react-native";
 import { signInWithEmailAndPassword } from "firebase/auth";
 import { auth } from "../firebase/app/firebase-config";
+import { Ionicons } from "@expo/vector-icons";
 import { router } from "expo-router";
 import axios from "axios";
 import { BASE_URL } from "../configs/base-url"
@@ -22,6 +24,12 @@ export default function Login() {
   const [loading, setLoading] = useState<boolean>(false);
 
   const handleLogin = async () => {
+    if (!email.trim() || !password.trim()) {
+      setError("One or more fields are empty");
+      setLoading(false);
+      return;
+    }
+
     setError("");
     setLoading(true);
     try {
@@ -49,93 +57,149 @@ export default function Login() {
       // 4. Navigate to the home screen upon success
       router.replace("/home");
     } catch (err: any) {
-      setError(err.message || "Incorrect email or password. Please try again.");
+      setError("Incorrect email or password.");
     } finally {
       setLoading(false);
     }
   };
-
-  return (
+return (
     <View style={styles.container}>
-      <Text style={styles.header}>Log In</Text>
-      {error ? <Text style={styles.errorText}>{error}</Text> : null}
-      <TextInput
-        style={styles.input}
-        placeholder="Email"
-        value={email}
-        onChangeText={setEmail}
-        keyboardType="email-address"
-        autoCapitalize="none"
-      />
-      <TextInput
-        style={styles.input}
-        placeholder="Password"
-        value={password}
-        onChangeText={setPassword}
-        secureTextEntry
-      />
-      <TouchableOpacity style={styles.button} onPress={handleLogin} disabled={loading}>
-        {loading ? (
-          <ActivityIndicator color="#fff" />
-        ) : (
-          <Text style={styles.buttonText}>Log In</Text>
-        )}
-      </TouchableOpacity>
+        <View style={styles.backgroundRectangle} />
+        <TouchableOpacity style={styles.backButton} onPress={() => router.back()}>
+          <Ionicons name="arrow-back" size={24} color="#FFF" />
+        </TouchableOpacity>
+        <Text style={styles.title}>RoadBuddy</Text>
+        <Image source={require('../assets/images/destination.png')} style={styles.destinationImage} />
+        <View style={styles.loginContainer}>
+            <Text style={styles.header}>Sign In</Text>
+            <TextInput
+              style={styles.input}
+              placeholder="Email"
+              value={email}
+              onChangeText={setEmail}
+              keyboardType="email-address"
+              autoCapitalize="none"
+            />
+            <TextInput
+                style={styles.input}
+                placeholder="Password"
+                value={password}
+                onChangeText={setPassword}
+                secureTextEntry
+            />
 
-      {/* Sign Up Button */}
-      <TouchableOpacity
-        style={styles.signupButton}
-        onPress={() => router.push("/signup")}
-      >
-        <Text style={styles.signupText}>Don't have an account? Sign Up</Text>
-      </TouchableOpacity>
+            {error ? <Text style={styles.error}>{error}</Text> : null}
+
+            <TouchableOpacity style={styles.signInButton} onPress={handleLogin} disabled={loading}>
+              {loading ? (
+                <ActivityIndicator color="#fff" />
+              ) : (
+                <Text style={styles.buttonText}>Log In</Text>
+              )}
+            </TouchableOpacity>
+
+            <View style={styles.signupContainer}>
+                <Text>Don't have an account?</Text>
+                <TouchableOpacity
+                  style={styles.signUpButton}
+                  onPress={() => router.push("/signup")}
+                >
+                  <Text style={styles.buttonText}>Sign Up</Text>
+                </TouchableOpacity>
+            </View>
+        </View>
     </View>
   );
 }
-
 const styles = StyleSheet.create({
   container: {
-    flex: 1,
-    padding: 20,
-    justifyContent: "center",
-    backgroundColor: "#fff",
+      flex: 1,
+      justifyContent: 'center',
+      alignItems: 'center',
+      backgroundColor: '#F8F3E9',
+      position: 'relative',
+  },
+  backgroundRectangle: {
+      position: 'absolute',
+      top: 0,
+      left: 0,
+      width: '100%',
+      height: '50%',
+      backgroundColor: '#A09189',
+      borderBottomLeftRadius: 40,
+      borderBottomRightRadius: 40,
+      elevation: 0,
+  },    
+  backButton: {
+      position: 'absolute',
+      top: 80,
+      left: 20,
+  },
+  title: {
+      position: 'absolute',
+      top: 70,
+      alignSelf: 'center',
+      fontSize: 28,
+      fontWeight: 'bold',
+      color: '#382f27',
+  },
+  loginContainer: {
+      width: 270,
+      backgroundColor: 'white',
+      padding: 30,
+      borderRadius: 10,
+      boxShadow: '0px 4px 6px rgba(0, 0, 0, 0.2)',
+      textAlign: 'center',
+      alignItems: 'center',
   },
   header: {
-    fontSize: 28,
-    fontWeight: "bold",
-    marginBottom: 20,
-    textAlign: "center",
+      fontSize: 34,
+      color: '#5C4B3D',
+      marginBottom: 20,
   },
   input: {
-    height: 45,
-    borderColor: "#ccc",
-    borderWidth: 1,
-    borderRadius: 8,
-    paddingHorizontal: 10,
-    marginBottom: 12,
+      width: '100%',
+      padding: 10,
+      marginVertical: 10,
+      borderBottomWidth: 2,
+      borderBottomColor: '#C1B6A4',
+      fontSize: 16,
+      color: '#5C4B3D',
   },
-  button: {
-    backgroundColor: "#007bff",
-    paddingVertical: 12,
-    borderRadius: 8,
-    alignItems: "center",
+  signInButton: {
+      marginTop: 10,
+      width: '100%',
+      padding: 10,
+      backgroundColor: '#C5D1AB',
+      borderRadius: 20,
+      alignItems: 'center',
   },
   buttonText: {
-    color: "#fff",
-    fontSize: 18,
-    fontWeight: "600",
+      fontWeight: 'bold',
+      color: '#333',
   },
-  errorText: {
-    color: "red",
-    marginBottom: 10,
-    textAlign: "center",
+  error: {
+      color: 'red',
+      marginTop: 10,
   },
-  signupButton: {
-    marginTop: 20,
-    alignItems: "center",
+  signupContainer: {
+      marginTop: 20,
+      alignItems: 'center',
+      width: '100%',
   },
-  signupText: {
-    color: "#007bff",
-    fontSize: 16,
+  signUpButton: {
+      marginTop: 10,
+      width: '100%',
+      padding: 10,
+      backgroundColor: '#C5D1AB',
+      borderRadius: 20,
+      alignItems: 'center',
+  },
+  destinationImage: {
+      width: '80%',
+      height: '55%',
+      position: 'absolute',
+      top: -60,
+      resizeMode: 'contain',
   },
 });
