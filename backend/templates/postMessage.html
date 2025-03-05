@@ -51,22 +51,52 @@
 <body>
   <div class="form-container">
     <h2>Post a Message</h2>
-    <form action="/post-message" method="POST">
-    <!-- Later on, replace the to field with the user ID of the receiving user -->
+    <form id="messageForm">
+      <!-- Later on, replace the to field with the user ID of the receiving user -->
       <label for="to">To</label>
-      <input type="text" name="to" placeholder="Change to user to send to" required>
+      <input type="text" id="to" name="to" placeholder="Change to user to send to" required>
 
-    <!-- Later on, replace the from field with the user ID of the sending user-->
+      <!-- Later on, replace the from field with the user ID of the sending user -->
       <label for="from">From</label>
-      <input type="text" name="from" placeholder="Your name or identifier" required>
+      <input type="text" id="from" name="from" placeholder="Your name or identifier" required>
 
       <label for="content">Content</label>
-      <textarea name="content" rows="4" placeholder="Write your message here" required></textarea>
-
-      <input type="hidden" id="time" name="time">
+      <textarea id="content" name="content" rows="4" placeholder="Write your message here" required></textarea>
 
       <button type="submit">Post Message</button>
     </form>
   </div>
+
+  <script>
+    document.getElementById("messageForm").addEventListener("submit", async function(event) {
+      event.preventDefault(); // Prevent traditional form submission
+      
+      const formData = {
+        to: document.getElementById("to").value,
+        from: document.getElementById("from").value,
+        content: document.getElementById("content").value,
+        time: new Date().toISOString() // Set the current timestamp
+      };
+
+      try {
+        const response = await fetch("/post-message", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json"
+          },
+          body: JSON.stringify(formData)
+        });
+
+        if (response.ok) {
+          alert("Message sent successfully!");
+        } else {
+          alert("Failed to send message.");
+        }
+      } catch (error) {
+        console.error("Error sending message:", error);
+        alert("An error occurred.");
+      }
+    });
+  </script>
 </body>
 </html>
