@@ -1,6 +1,7 @@
 from datetime import timedelta
 from functools import wraps
 import os
+from datetime import datetime
 import stripe
 from flask import (
     Flask, redirect, render_template, request,
@@ -11,7 +12,6 @@ from firebase_admin import credentials, firestore, auth
 from firebase_admin.auth import InvalidIdTokenError, EmailAlreadyExistsError
 from firebase_admin.exceptions import FirebaseError
 from flask_cors import CORS
-import datetime
 
 from utils import (
     is_duplicate_car, is_duplicate_ride, print_json
@@ -33,10 +33,15 @@ firebase_admin.initialize_app(cred)
 db = firestore.client()
 
 stripe_keys = {
-    "secret_key": os.environ["STRIPE_SECRET_KEY"],
-    "publishable_key": os.environ["STRIPE_PUBLISHABLE_KEY"],
+    "secret_key": (
+        "sk_test_51MjBbNDiM3EAos9ofwDzdsbJk97A0HgXhnhkSaBUDaISKbxxURNFZtXWIDST7"
+        "ZWDWrCb4ZihCO2eLNZWjru4VKx000b02YyMeY"
+    ),
+    "publishable_key": (
+        "pk_test_51MjBbNDiM3EAos9ocETiK2jsHzePLkUvL95YrsEwpCgThRFn4EI0eFyNl5"
+        "5l7jsJzEHoHbGXOyfDm9HYTLKLsKHw00jukt7PIy"
+    ),
 }
-
 stripe.api_key = stripe_keys["secret_key"]
 
 def auth_required(f):
@@ -655,7 +660,7 @@ def post_message():
             'to': request.form.get('to'),
             'from': request.form.get('from'),
             'content': request.form.get('content'),
-            'time': datetime.utcnow().strftime('%Y-%m-%d')
+            'time': datetime.now().strftime('%Y-%m-%d %H:%M')
         }
 
         try:
