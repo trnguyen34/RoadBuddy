@@ -7,7 +7,7 @@ import os
 import stripe
 import pytz
 from flask import (
-    Flask, request, session, jsonify, render
+    Flask, request, session, jsonify, render_template
 )
 import google.cloud
 import firebase_admin
