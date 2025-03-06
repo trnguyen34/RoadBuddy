@@ -376,11 +376,7 @@ def create_payment_sheet():
         return jsonify({"error": "User not authenticated"}), 401
 
     ride_owner_id = ride_doc.get('ownerID')
-    refund = bool(data.get('refund').strip())
-    if refund in ['true', 'True']:
-        refund = True
-    else:
-        refund = False
+    refund = data.get('refund', '').strip().lower() == 'true'
 
     if ride_owner_id == user_id and not refund:
         return jsonify({"error": "User cannot book its own ride."}), 400
