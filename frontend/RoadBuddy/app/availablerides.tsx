@@ -34,10 +34,11 @@ export default function AvailableRides() {
   // Used in table sort
   const [refreshRides, setRefresh] = useState<boolean>(false);
   const [sortDescent, setDescent] = useState<boolean>(false);
+  const [descentIcon, setDescentIcon] = useState<boolean>(false);
   const [selectedCriterion, setCriterion] = useState<string>("date");
   const [error, setError] = useState<string>("");
   const [refreshing, setRefreshing] = useState<boolean>(false);
-  const [pickerText, setPickerText] = useState<string>("Sort by Criterion(click to toggle asc/dsc)")
+  const [pickerText, setPickerText] = useState<string>("Sort by Criterion")
 
   const fetchRides = async () => {
     try {
@@ -93,7 +94,6 @@ export default function AvailableRides() {
   };
 
   function sortRides(criterion: keyof SortConfig | "default", rides: Ride[]) {
-    setDescent(!sortDescent);
     const sortConfig: SortConfig = {
       id: (a, b) => a.id.localeCompare(b.id) * (sortDescent ? -1 : 1),
       from: (a, b) => a.from.localeCompare(b.from) * (sortDescent ? -1 : 1),
@@ -113,11 +113,18 @@ export default function AvailableRides() {
     rides.sort(sortFunction);
     setRides(rides);
     setRefresh(!refreshRides);
+    setDescent(!sortDescent);
+    setDescentIcon(sortDescent);
   }
   function updatePicker(criterion: string) {
     setCriterion(criterion);
+    setPickerText(criterion);
     setDescent(false);
+    setDescentIcon(sortDescent);
+    sortRides(selectedCriterion, rides);
+    setRefresh(!refreshRides);
   }
+
   
   return (
     <SafeAreaView style={styles.safeArea}>
@@ -148,13 +155,14 @@ export default function AvailableRides() {
                     accessible={true}
                     onChange={(option)=>{updatePicker(option.label)}}
                     style= {styles.sortPicker}
+                    initValueTextStyle={styles.pickerText}
                     />
             {/* Sort button(old) */}
             <TouchableOpacity
               style={styles.sortButton}
-              onPress={() => sortRides(selectedCriterion, rides)}
+              onPress={() => {sortRides(selectedCriterion, rides)}}
             >
-              <Ionicons name="arrow-back" size={24} color="#000" />
+              <Ionicons name={descentIcon ? 'arrow-down' : 'arrow-up'} size={24} color="#000" />
             </TouchableOpacity>
           </View>
         </View>
@@ -217,6 +225,9 @@ const styles = StyleSheet.create({
     marginLeft: 5,
     color: "#5C4B3D",
     zIndex: 1,
+  },
+  pickerText:{
+    color:'#00000',
   },
   carIcon: {
     marginBottom: 5,
