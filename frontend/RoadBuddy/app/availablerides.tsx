@@ -17,7 +17,7 @@ import { BASE_URL } from "../configs/base-url";
 import { router, useNavigation } from "expo-router";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { Ride } from "./ride/ride";
-
+type SortFunction = (a: Ride, b: Ride) => number;
 interface SortConfig {
   [key: string]: SortFunction;
 }
