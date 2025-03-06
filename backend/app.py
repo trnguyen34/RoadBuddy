@@ -6,8 +6,7 @@ import os
 import stripe
 import pytz
 from flask import (
-    Flask, redirect, render_template, request,
-    make_response, session, url_for, jsonify
+    Flask, request, session, jsonify
 )
 import google.cloud
 import firebase_admin
@@ -56,15 +55,6 @@ def get_user_id():
 def auth_required(f):
     """
     Decorator to enforce user authentication for a route.
-
-    Checks if 'user' exists in the session. If not, redirects to the login page. Otherwise, 
-    executes the wrapped function.
-
-    Args:
-        f (function): The route function to wrap and execute if authentication passes.
-
-    Returns:
-        function: The wrapped function if authenticated, or a redirect to the login page.
     """
     @wraps(f)
     def decorated_function(*args, **kwargs):
@@ -78,13 +68,6 @@ def auth_required(f):
 def authorize():
     """
     Authorizes a user based on a Bearer token in the request header.
-
-    Validates the token using Firebase. If valid, adds the user to the session 
-    and redirects to the home page. If invalid, returns a 401 Unauthorized response.
-
-    Returns:
-        Response: A redirect to the home page if authentication succeeds, or a 
-        401 Unauthorized response if it fails.
     """
     # Retrieve the token from the Authorization header.
     token = request.headers.get('Authorization')
@@ -106,172 +89,24 @@ def authorize():
     except InvalidIdTokenError:
         return jsonify({"error": "Unauthorized: Invalid token"}), 401
 
-@app.route('/', methods=['GET'])
-def index():
-    """
-    Redirects users to the appropriate page based on authentication status.
-
-    If the user is logged in (exists in the session), redirects to the home page. 
-    Otherwise, redirects to the login page.
-
-    Returns:
-        Response: A redirect to the home page for authenticated users, or the 
-        login page for unauthenticated users.
-    """
-    # if 'user' in session:
-    #     return redirect(url_for('home'))
-    # return redirect(url_for('login'))
-    return jsonify({"message": "Welcome to RoadBuddy!"}), 200
-
-@app.route('/login', methods=['GET', 'POST'])
-def login():
-    """
-    Handles user login and redirects if already authenticated.
-
-    If the user is already logged in (exists in the session), redirects to the index page. 
-    Otherwise, renders the login page.
-
-    Returns:
-        Response: A redirect to the index page if authenticated, or the rendered login page.
-    """
-    if 'user' in session:
-        return redirect(url_for('index'))
-    return render_template('login.html')
-
-@app.route('/signup', methods=['GET', 'POST'])
-def signup():
-    """
-    Handles user registration.
-
-    If the user is already logged in, redirects to the index page. For POST requests, 
-    collects user details, validates them, and creates a new user in Firestore. 
-    On success, adds the user to the session and redirects to the index page. 
-    On failure, displays an error message. For GET requests, renders the signup page.
-
-    Returns:
-        Response: A redirect to the index page for logged-in or newly registered users, 
-        or the rendered signup page with or without an error message.
-    """
-    if 'user' in session:
-        return redirect(url_for('index'))
-
-    if request.method == 'POST':
-        name = request.form.get('name')
-        email = request.form.get('email')
-        password = request.form.get('password')
-
-        if len(password) < 6:
-            return render_template('signup.html', error="Password length must be greater than 6")
-
-        try:
-            user = auth.create_user(
-                email=email,
-                password=password,
-                display_name=name
-            )
-            db.collection('users').document(user.uid).set({
-                'name': name,
-                'email': email,
-                'ridesPosted': [],
-                'ridesJoined': []
-            })
-            session['user'] = {
-                'uid': user.uid,
-                'email': user.email,
-                'display_name': user.display_name
-            }
-            return redirect(url_for('index'))
-        except EmailAlreadyExistsError:
-            return render_template('signup.html', error="The email entered already exists.")
-        except FirebaseError:
-            return render_template('signup.html', error="Please try again.")
-
-    return render_template('signup.html')
-
-@app.route('/logout', methods=['POST'])
-def logout():
-    """
-    Logs out the current user by clearing session and cookies.
-
-    Removes the 'user' key from the session and invalidates the session cookie. 
-    Redirects the user to the login page.
-
-    Returns:
-        Response: A redirect to the login page with the session and cookies cleared.
-    """
-    session.pop('user', None)
-    response = make_response(redirect(url_for('login')))
-    response.set_cookie('session', '', expires=0)
-    return response
-
-@app.route('/add-car', methods=['GET', 'POST'])
-@auth_required
-def add_car():
-    """
-    Handles adding a car to the user's profile.
-
-    Returns:
-        JSON response if successful, or renders the addCar form.
-    """
-    if request.method == 'POST':
-        is_primary = request.form.get('isPrimary') == "true"
-        car_details = {
-            'make': request.form.get('make'),
-            'model': request.form.get('model'),
-            'licensePlate': request.form.get('licensePlate'),
-            'vin': request.form.get('vin'),
-            'year': int(request.form.get('year')),
-            'color': request.form.get('color'),
-            'isPrimary': is_primary
-        }
-
-        try:
-            user_id = session['user'].get('uid')
-            cars_ref = db.collection('users').document(user_id).collection('cars')
-
-            if is_duplicate_car(db, user_id, car_details):
-                return jsonify({"error": "Duplicate car detected"}), 400
-
-            # If new car is marled as primary, unset any existing primary car
-            if is_primary:
-                existing_primary_cars = cars_ref.where('isPrimary', '==', True).stream()
-                for car in existing_primary_cars:
-                    cars_ref.document(car.id).update({'isPrimary': False})
-
-            cars_ref.document().set(car_details)
-
-            return jsonify({"message": "Car added successfully", "car": car_details}), 201
-        except FirebaseError:
-            return render_template('addCar.html', error="Please try again.")
-
-    return render_template('addCar.html')
-
-@app.route('/home')
-@auth_required
-def home():
-    """
-    Renders the home page for authenticated users.
-
-    Retrieves the user's name from the session (defaults to 'User' if not available) and 
-    passes it to the home page template.
-
-    Returns:
-        Response: The rendered home page for the authenticated user.
-    """
-    user_name = session['user'].get('name', 'Guest')
-    return render_template('display_name', user_name=user_name)
-
 @app.route('/api/signup', methods=['POST'])
 def api_signup():
-    """_summary_
-
-    Returns:
-        _type_: _description_
     """
-
+    Create a user account
+    """
     data = request.get_json()
     if not data:
         return jsonify({"error": "Invalid JSON payload"}), 400
+
+    required_fields = [
+      'name',
+      'email',
+      'password'
+    ]
+
+    missing_response = check_required_fields(data, required_fields)
+    if missing_response:
+        return jsonify(missing_response[0]), missing_response[1]
 
     name = data.get('name').strip()
     email = data.get('email').strip()
@@ -302,10 +137,8 @@ def api_signup():
 
 @app.route('/api/logout', methods=['POST'])
 def api_logout():
-    """_summary_
-
-    Returns:
-        _type_: _description_
+    """
+    Delete user from session
     """
     session.pop('user', None)
     response = jsonify({"message": "Logged out successfully"})
@@ -315,14 +148,26 @@ def api_logout():
 @app.route('/api/add-car', methods=['POST'])
 @auth_required
 def api_add_car():
-    """_summary_
-
-    Returns:
-        _type_: _description_
+    """
+    Add a vehicale
     """
     data = request.get_json()
     if not data:
         return jsonify({"error": "Invalid JSON payload"}), 400
+
+    required_fields = [
+      'make',
+      'model',
+      'licensePlate',
+      'vin',
+      'year',
+      'color',
+      'isPrimary'
+    ]
+
+    missing_response = check_required_fields(data, required_fields)
+    if missing_response:
+        return jsonify(missing_response[0]), missing_response[1]
 
     try:
         is_primary = data.get('isPrimary')
@@ -615,7 +460,7 @@ def get_all_rides():
 
 @app.route('/api/rides/<ride_id>', methods=['GET'])
 @auth_required
-def get_ride_details(ride_id):
+def api_get_ride_details(ride_id):
     """Fetch a ride with the given ride id"""
     try:
         ride_doc_ref = db.collection('rides').document(ride_id)
@@ -632,7 +477,7 @@ def get_ride_details(ride_id):
 
 @app.route('/api/coming-up-rides', methods=['GET'])
 @auth_required
-def get_coming_up_rides():
+def api_get_coming_up_rides():
     """Fetch all the user coming up rides"""
     user_id = get_user_id()
 
@@ -895,15 +740,9 @@ def api_get_all_notifications():
 @app.route('/api/home', methods=['GET'])
 @auth_required
 def api_home():
-    """_summary_
-    Returns:
-        _type_: _description_
     """
-    # Access the session cookie (or any cookie sent by the client)
-    # cookie_data = request.cookies.get('session')
-    # print("Session cookie received:", cookie_data)
-
-    # Also, you can access your Flask session data
+    Homepage when user logged in.
+    """
     user = session.get('user', {})
     user_name = user.get('name', 'Guest')
     print_json(user)
