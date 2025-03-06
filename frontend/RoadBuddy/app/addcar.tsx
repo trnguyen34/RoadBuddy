@@ -18,11 +18,14 @@ import { router } from "expo-router";
 import { BASE_URL } from "../configs/base-url";
 
 // Define valid options.
-const validMakes = ["Toyota", "Honda", "Ford"];
+const validMakes = ["BMW", "Honda", "Ford", "Mercedez", "Toyota", "Lexus"].sort();
 const validModels: { [key: string]: string[] } = {
-  Toyota: ["Camry", "Corolla", "Prius"],
-  Honda: ["Accord", "Civic", "Fit"],
-  Ford: ["Focus", "Fusion", "Mustang"],
+  Toyota: ["Camry", "Corolla", "Prius"].sort(),
+  Honda: ["Accord", "Civic", "Fit"].sort(),
+  Ford: ["Focus", "Fusion", "Mustang"].sort(),
+  Mercedez: ["AMG-GT", "S-Class Sedan", "C-Class Sedan", "Maybach"].sort(),
+  BMW: ["M4 Coupe", "Z4 Roadster", "X1 SUV"].sort(),
+  Lexus: ["GX", "RX 350", "RX 450H", "LX HYBRID"].sort()
 };
 
 const currentYear = new Date().getFullYear();
@@ -134,10 +137,10 @@ export default function AddCar() {
         Alert.alert("Success", "Ride posted successfully!");
         router.replace("/home");
       } else {
-        setError("Failed to add car.");
+        setError("Failed to add vehicle.");
       }
     } catch (err: any) {
-      console.error("Add Car Error:", err);
+      console.error("Add vehicle Error:", err);
       setError(err.response?.data?.error || "An error occurred.");
     } finally {
       setLoading(false);
@@ -218,7 +221,7 @@ export default function AddCar() {
       />
 
       {/* Checkbox for Primary Car */}
-      <View style={styles.checkboxContainer}>
+      {/* <View style={styles.checkboxContainer}>
         <Text style={styles.label}>Primary Car?</Text>
         <TouchableOpacity
           style={styles.checkbox}
@@ -226,7 +229,7 @@ export default function AddCar() {
         >
           {isPrimary && <Text style={styles.checkboxTick}>✔</Text>}
         </TouchableOpacity>
-      </View>
+      </View> */}
 
       <TouchableOpacity
         style={styles.button}

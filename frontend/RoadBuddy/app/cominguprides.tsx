@@ -85,6 +85,8 @@ function ComingUpRides() {
               cost: item.cost.toString(),
               currentPassengers: JSON.stringify(item.currentPassengers),
               maxPassengers: item.maxPassengers.toString(),
+              car: item.car,
+              licensePlate: item.licensePlate,
               ownerName: item.ownerName,
             },
           })
@@ -99,6 +101,8 @@ function ComingUpRides() {
         <Text style={styles.rideText}>
           Passengers: {item.currentPassengers.length}/{item.maxPassengers}
         </Text>
+        <Text style={styles.rideText}>Car: {item.car}</Text>
+        <Text style={styles.rideText}>License Plate: {item.licensePlate}</Text>
         <Text style={styles.rideText}>Driver: {item.ownerName}</Text>
       </TouchableOpacity>
     );

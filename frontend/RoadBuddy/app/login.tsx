@@ -12,6 +12,7 @@ import {
 } from "react-native";
 import { signInWithEmailAndPassword } from "firebase/auth";
 import { auth } from "../firebase/app/firebase-config";
+import { Ionicons } from "@expo/vector-icons";
 import { router } from "expo-router";
 import axios from "axios";
 import { BASE_URL } from "../configs/base-url"
@@ -23,6 +24,12 @@ export default function Login() {
   const [loading, setLoading] = useState<boolean>(false);
 
   const handleLogin = async () => {
+    if (!email.trim() || !password.trim()) {
+      setError("One or more fields are empty");
+      setLoading(false);
+      return;
+    }
+
     setError("");
     setLoading(true);
     try {
@@ -50,7 +57,7 @@ export default function Login() {
       // 4. Navigate to the home screen upon success
       router.replace("/home");
     } catch (err: any) {
-      setError(err.message || "Incorrect email or password. Please try again.");
+      setError("Incorrect email or password.");
     } finally {
       setLoading(false);
     }
@@ -58,8 +65,8 @@ export default function Login() {
 return (
     <View style={styles.container}>
         <View style={styles.backgroundRectangle} />
-        <TouchableOpacity onPress={() => router.push("/start")} style={styles.backButton}>
-            <Text>&#8592;</Text>
+        <TouchableOpacity style={styles.backButton} onPress={() => router.back()}>
+          <Ionicons name="arrow-back" size={24} color="#FFF" />
         </TouchableOpacity>
         <Text style={styles.title}>RoadBuddy</Text>
         <Image source={require('../assets/images/destination.png')} style={styles.destinationImage} />
@@ -80,6 +87,9 @@ return (
                 onChangeText={setPassword}
                 secureTextEntry
             />
+
+            {error ? <Text style={styles.error}>{error}</Text> : null}
+
             <TouchableOpacity style={styles.signInButton} onPress={handleLogin} disabled={loading}>
               {loading ? (
                 <ActivityIndicator color="#fff" />
@@ -88,7 +98,6 @@ return (
               )}
             </TouchableOpacity>
 
-            {error ? <Text style={styles.error}>{error}</Text> : null}
             <View style={styles.signupContainer}>
                 <Text>Don't have an account?</Text>
                 <TouchableOpacity
@@ -135,7 +144,7 @@ const styles = StyleSheet.create({
       color: '#382f27',
   },
   loginContainer: {
-      width: 250,
+      width: 270,
       backgroundColor: 'white',
       padding: 30,
       borderRadius: 10,

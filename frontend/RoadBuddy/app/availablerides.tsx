@@ -1,4 +1,3 @@
-
 import React, { useEffect, useState } from "react";
 import {
   SafeAreaView,
@@ -9,13 +8,19 @@ import {
   StyleSheet,
   TextInput,
   TouchableOpacity,
+  RefreshControl,
 } from "react-native";
 import axios from "axios";
+import { Picker } from "@react-native-picker/picker";
 import { Ionicons } from "@expo/vector-icons";
 import { BASE_URL } from "../configs/base-url";
 import { router, useNavigation } from "expo-router";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
-import {Ride} from "./ride/ride";
+import { Ride } from "./ride/ride";
+
+interface SortConfig {
+  [key: string]: SortFunction;
+}
 
 export default function AvailableRides() {
   const insets = useSafeAreaInsets();
@@ -23,43 +28,54 @@ export default function AvailableRides() {
 
   const [rides, setRides] = useState<Ride[]>([]);
   const [loading, setLoading] = useState<boolean>(true);
+  // Used in table sort
+  const [refreshRides, setRefresh] = useState<boolean>(false);
+  const [sortDescent, setDescent] = useState<boolean>(false);
+  const [selectedCriterion, setCriterion] = useState<string>("date");
   const [error, setError] = useState<string>("");
+  const [refreshing, setRefreshing] = useState<boolean>(false);
+
+  const fetchRides = async () => {
+    try {
+      const response = await axios.get(`${BASE_URL}/api/available-rides`, {
+        withCredentials: true,
+      });
+      setRides(response.data.rides);
+    } catch (err: any) {
+      setError(
+        err.response?.data?.error || "Failed to fetch rides. Please try again."
+      );
+    } finally {
+      setLoading(false);
+      setRefreshing(false);
+    }
+  };
 
   useEffect(() => {
-    const fetchRides = async () => {
-      try {
-        const response = await axios.get(`${BASE_URL}/api/available-rides`, {
-          withCredentials: true,
-        });
-        setRides(response.data.rides);
-      } catch (err: any) {
-        setError(
-          err.response?.data?.error || "Failed to fetch rides. Please try again."
-        );
-      } finally {
-        setLoading(false);
-      }
-    };
-
     fetchRides();
   }, []);
 
+  const handleRefresh = () => {
+    setRefreshing(true);
+    fetchRides();
+  };
+
   const renderRideItem = ({ item }: { item: Ride }) => {
-    // Wrap each card in a TouchableOpacity to make it clickable
     return (
       <TouchableOpacity
         style={styles.rideCard}
         onPress={() => {
-          // Navigate to ride details page using the ride's ID
           router.push(`/ride/${item.id}`);
         }}
       >
         <Text style={styles.rideLocations}>
           {item.from} → {item.to}
         </Text>
-        <Text style={styles.rideDate}>
+        <Text style={styles.rideText}>
           date: {item.date} | departure: {item.departureTime}
         </Text>
+        <Text style={styles.rideText}>Car: {item.car}</Text>
+        <Text style={styles.rideText}>License Plate: {item.licensePlate}</Text>
         <Text style={styles.rideText}>Driver: {item.ownerName}</Text>
         <View style={styles.row}>
           <Text style={styles.seatsText}>
@@ -72,17 +88,52 @@ export default function AvailableRides() {
     );
   };
 
+  function sortRides(criterion: keyof SortConfig | "default", rides: Ride[]) {
+    setDescent(!sortDescent);
+    const sortConfig: SortConfig = {
+      id: (a, b) => a.id.localeCompare(b.id) * (sortDescent ? -1 : 1),
+      from: (a, b) => a.from.localeCompare(b.from) * (sortDescent ? -1 : 1),
+      to: (a, b) => a.to.localeCompare(b.to) * (sortDescent ? -1 : 1),
+      cost: (a, b) => (a.cost - b.cost) * (sortDescent ? -1 : 1),
+      maxPassengers: (a, b) =>
+        (a.maxPassengers - b.maxPassengers) * (sortDescent ? -1 : 1),
+      ownerName: (a, b) =>
+        a.ownerName.localeCompare(b.ownerName) * (sortDescent ? -1 : 1),
+      default: (a, b) =>
+        (new Date(`${a.date}T${a.departureTime}`).getTime() -
+          new Date(`${b.date}T${b.departureTime}`).getTime()) *
+        (sortDescent ? -1 : 1),
+    };
+
+    const sortFunction = sortConfig[criterion] ?? sortConfig["default"];
+    rides.sort(sortFunction);
+    setRides(rides);
+    setRefresh(!refreshRides);
+  }
+  function updatePicker(criterion: string) {
+    setCriterion(criterion);
+    setDescent(false);
+  }
+
   return (
     <SafeAreaView style={styles.safeArea}>
       <View style={styles.container}>
         {/* Header Section */}
         <View style={styles.headerContainer}>
           {/* Back Button */}
-          <TouchableOpacity style={styles.backButton} onPress={() => navigation.goBack()}>
+          <TouchableOpacity
+            style={styles.backButton}
+            onPress={() => router.replace("/home")}
+          >
             <Ionicons name="arrow-back" size={24} color="#FFF" />
           </TouchableOpacity>
 
-          <Ionicons name="car-outline" size={40} color="#FFF" style={styles.carIcon} />
+          <Ionicons
+            name="car-outline"
+            size={40}
+            color="#FFF"
+            style={styles.carIcon}
+          />
           <Text style={styles.ridesTitle}>Rides</Text>
 
           {/* Search Bar (placeholder) */}
@@ -93,10 +144,40 @@ export default function AvailableRides() {
               placeholder="Search"
               placeholderTextColor="#5C4B3D"
             />
+            {/* Sort button(old) */}
+            <TouchableOpacity
+              style={styles.sortButton}
+              onPress={() => sortRides(selectedCriterion, rides)}
+            >
+              <Ionicons name="arrow-back" size={24} color="#000" />
+            </TouchableOpacity>
           </View>
+          <Picker
+            style={styles.sortPicker}
+            selectedValue={selectedCriterion}
+            onValueChange={(itemValue) => updatePicker(itemValue)}
+          >
+            <Picker.Item label="Date/Time" value="default" color="#000" />
+            <Picker.Item label="Ride ID" value="id" color="#000" />
+            <Picker.Item label="From" value="from" color="#000" />
+            <Picker.Item label="To" value="to" color="#000" />
+            <Picker.Item label="Cost" value="cost" />
+            <Picker.Item
+              label="Max Passengers"
+              value="maxPassengers"
+              color="#000"
+            />
+            <Picker.Item label="Ride Provider" value="ownerName" color="#000" />
+          </Picker>
         </View>
 
-        {loading && <ActivityIndicator size="large" color="#8C7B6B" style={{ marginTop: 20 }} />}
+        {loading && (
+          <ActivityIndicator
+            size="large"
+            color="#8C7B6B"
+            style={{ marginTop: 20 }}
+          />
+        )}
         {error ? (
           <Text style={styles.errorText}>{error}</Text>
         ) : (
@@ -106,6 +187,9 @@ export default function AvailableRides() {
             renderItem={renderRideItem}
             contentContainerStyle={styles.listContent}
             style={styles.list}
+            extraData={refreshRides}
+            refreshing={refreshing}
+            onRefresh={handleRefresh}
           />
         )}
       </View>
@@ -135,14 +219,19 @@ const styles = StyleSheet.create({
     left: 15,
     top: 15,
   },
+  sortButton: {
+    position: "absolute",
+    marginLeft: 290,
+  },
+  sortPicker: {
+    position: "absolute",
+    height: 10,
+    width: 200,
+    marginLeft: 150,
+    zIndex: 1,
+  },
   carIcon: {
     marginBottom: 5,
-  },
-  roadBuddyText: {
-    fontSize: 28,
-    fontWeight: "bold",
-    color: "#FFF",
-    marginBottom: 10,
   },
   ridesTitle: {
     fontSize: 24,
@@ -196,10 +285,10 @@ const styles = StyleSheet.create({
     color: "#5C4B3D",
     marginBottom: 6,
   },
-  rideDate: {
+  rideText: {
     fontSize: 14,
-    color: "#5C4B3D",
-    marginBottom: 8,
+    color: "#333",
+    marginBottom: 4,
   },
   row: {
     flexDirection: "row",
@@ -215,10 +304,5 @@ const styles = StyleSheet.create({
     fontSize: 14,
     fontWeight: "bold",
     color: "#333",
-  },
-  rideText: {
-    fontSize: 14,
-    color: "#333",
-    marginBottom: 8,
   },
 });
