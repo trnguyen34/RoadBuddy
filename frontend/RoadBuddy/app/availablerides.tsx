@@ -37,6 +37,7 @@ export default function AvailableRides() {
   const [selectedCriterion, setCriterion] = useState<string>("date");
   const [error, setError] = useState<string>("");
   const [refreshing, setRefreshing] = useState<boolean>(false);
+  const [pickerText, setPickerText] = useState<string>("Sort by Criterion(click to toggle asc/dsc)")
 
   const fetchRides = async () => {
     try {
@@ -141,16 +142,13 @@ export default function AvailableRides() {
 
           {/* Search Bar (placeholder) */}
           <View style={styles.searchContainer}>
-            <Ionicons name="search-outline" size={20} color="#5C4B3D" />
             <ModalSelector
                     data={[{key:0, label:"date/time"}, {key:1, label:"id"}, {key:2, label:"from"}, {key:3, label:"to"}, {key:4,label:"cost"}, {key:5,label:"maxPassengers"}, {key:6,label:"ownerName"}]}
-                    initValue="Sort by criterion (click button to sort)"
-                    onChange={(option: { label: any; key: any; })=>updatePicker(option.label)} />
-            <TextInput
-              style={styles.searchInput}
-              placeholder="Search"
-              placeholderTextColor="#5C4B3D"
-            />
+                    initValue={pickerText}
+                    accessible={true}
+                    onChange={(option)=>{updatePicker(option.label)}}
+                    style= {styles.sortPicker}
+                    />
             {/* Sort button(old) */}
             <TouchableOpacity
               style={styles.sortButton}
@@ -159,23 +157,6 @@ export default function AvailableRides() {
               <Ionicons name="arrow-back" size={24} color="#000" />
             </TouchableOpacity>
           </View>
-          <Picker
-            style={styles.sortPicker}
-            selectedValue={selectedCriterion}
-            onValueChange={(itemValue) => updatePicker(itemValue)}
-          >
-            <Picker.Item label="Date/Time" value="default" color="#000" />
-            <Picker.Item label="Ride ID" value="id" color="#000" />
-            <Picker.Item label="From" value="from" color="#000" />
-            <Picker.Item label="To" value="to" color="#000" />
-            <Picker.Item label="Cost" value="cost" />
-            <Picker.Item
-              label="Max Passengers"
-              value="maxPassengers"
-              color="#000"
-            />
-            <Picker.Item label="Ride Provider" value="ownerName" color="#000" />
-          </Picker>
         </View>
 
         {loading && (
@@ -229,12 +210,12 @@ const styles = StyleSheet.create({
   sortButton: {
     position: "absolute",
     marginLeft: 290,
+    zIndex:2
   },
   sortPicker: {
-    position: "absolute",
-    height: 10,
-    width: 200,
-    marginLeft: 150,
+    flex: 1,
+    marginLeft: 5,
+    color: "#5C4B3D",
     zIndex: 1,
   },
   carIcon: {
