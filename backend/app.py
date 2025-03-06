@@ -377,6 +377,11 @@ def create_payment_sheet():
 
     ride_owner_id = ride_doc.get('ownerID')
     refund = bool(data.get('refund').strip())
+    if refund in ['true', 'True']:
+        refund = True
+    else:
+        refund = False
+
     if ride_owner_id == user_id and not refund:
         return jsonify({"error": "User cannot book its own ride."}), 400
 
