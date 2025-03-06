@@ -9,7 +9,9 @@ import {
   TextInput,
   TouchableOpacity,
   RefreshControl,
+  Platform,
 } from "react-native";
+import ModalPicker from 'react-native-modal-selector';
 import axios from "axios";
 import { Picker } from "@react-native-picker/picker";
 import { Ionicons } from "@expo/vector-icons";
@@ -17,7 +19,8 @@ import { BASE_URL } from "../configs/base-url";
 import { router, useNavigation } from "expo-router";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { Ride } from "./ride/ride";
-
+import ModalSelector from "react-native-modal-selector";
+type SortFunction = (a: Ride, b: Ride) => number;
 interface SortConfig {
   [key: string]: SortFunction;
 }
@@ -114,7 +117,7 @@ export default function AvailableRides() {
     setCriterion(criterion);
     setDescent(false);
   }
-
+  
   return (
     <SafeAreaView style={styles.safeArea}>
       <View style={styles.container}>
@@ -139,6 +142,10 @@ export default function AvailableRides() {
           {/* Search Bar (placeholder) */}
           <View style={styles.searchContainer}>
             <Ionicons name="search-outline" size={20} color="#5C4B3D" />
+            <ModalSelector
+                    data={[{key:0, label:"date/time"}, {key:1, label:"id"}, {key:2, label:"from"}, {key:3, label:"to"}, {key:4,label:"cost"}, {key:5,label:"maxPassengers"}, {key:6,label:"ownerName"}]}
+                    initValue="Sort by criterion (click button to sort)"
+                    onChange={(option: { label: any; key: any; })=>updatePicker(option.label)} />
             <TextInput
               style={styles.searchInput}
               placeholder="Search"
