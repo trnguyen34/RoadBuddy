@@ -1,18 +1,18 @@
 /* eslint-disable react/jsx-no-duplicate-props */
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { 
   View, 
   Text, 
   TextInput, 
-  Button, 
-  StyleSheet, 
   ActivityIndicator, 
   Alert,
   TouchableOpacity, 
   Platform,
   SafeAreaView,
   Modal,
+  StyleSheet,
 } from 'react-native';
+import { Picker } from '@react-native-picker/picker';
 import { GooglePlacesAutocomplete } from 'react-native-google-places-autocomplete';
 import 'react-native-get-random-values';
 import axios from 'axios';
@@ -20,6 +20,14 @@ import { router } from 'expo-router';
 import DateTimePicker from '@react-native-community/datetimepicker';
 import { BASE_URL } from "../configs/base-url";
 import { googlePlaceApi } from "../configs/google-api";
+
+interface Car {
+  make: string;
+  model: string;
+  year: number;
+  color: string;
+  licensePlate: string;
+}
 
 export default function PostRide() {
   const [fromAddress, setFromAddress] = useState('');
@@ -45,15 +53,53 @@ export default function PostRide() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
 
+  const [cars, setCars] = useState<Car[]>([]);
+
+  // New state: store the selected car object (or null)
+  const [selectedCar, setSelectedCar] = useState<Car | null>(null);
+  const [carModalVisible, setCarModalVisible] = useState<boolean>(false);
+
+  useEffect(() => {
+    const fetchCars = async () => {
+      try {
+        const response = await axios.get<{ cars: Car[] }>(`${BASE_URL}/api/get-cars`, {
+          withCredentials: true,
+        });
+
+        if (response.status === 200) {
+          setCars(response.data.cars);
+        } else {
+          Alert.alert(
+            "Error",
+            "You must have at least one vehicles added to post a ride. Do you want to add a vehicle?",
+            [
+              { text: "Cancel", onPress: () => router.replace("/home") },
+              { text: "Proceed", onPress: () => router.replace("/addcar") },
+            ]
+          );
+        }
+      } catch (err) {
+        console.error("Failed to fetch added vehicles:", err);
+        setError("Failed to fetch added vehicles data.");
+      }
+    };
+    fetchCars();
+  }, []);
+
+  // Helper to create a formatted string for a car
+  const formatCar = (car: Car) => {
+    return `${car.year} ${car.color.trim()} ${car.make.trim()} ${car.model.trim()}`;
+  };
+
   // Helper to check if a given time (Date) is in the past relative to now
   const isTimeInPast = (selectedTime: Date) => {
     const now = new Date();
     return selectedTime.getTime() < now.getTime();
   };
 
-  // Helper function for displaying month in this format MM-DD-YYYY
+  // Helper function for displaying date in MM-DD-YYYY format
   const formatDateForDisplay = (isoDate: string) => {
-    const [year, month, day] = isoDate.split('-'); // Assuming "YYYY-MM-DD" format
+    const [year, month, day] = isoDate.split('-');
     return `${month}-${day}-${year}`; // Convert to MM-DD-YYYY
   };
 
@@ -69,6 +115,13 @@ export default function PostRide() {
   
     if (!toAddress.trim()) {
       setError("Please enter a valid 'To' address.");
+      setLoading(false);
+      return;
+    }
+
+    // Validate that a car was selected
+    if (!selectedCar) {
+      setError("Please select a vehicle for this ride.");
       setLoading(false);
       return;
     }
@@ -112,6 +165,8 @@ export default function PostRide() {
 
     try {
       const payload = {
+        car_select: formatCar(selectedCar),
+        licebse_plate: selectedCar.licensePlate,
         from: fromAddress,
         to: toAddress,
         date: dateText,
@@ -254,12 +309,11 @@ export default function PostRide() {
         </TouchableOpacity>
       </Modal>
 
-      {/* Time Field as TouchableOpacity */}
+      {/* Time Picker */}
       <TouchableOpacity style={styles.input} onPress={() => setShowTimePicker(true)}>
         <Text style={styles.inputText}>{departureTimeText || "Select Departure Time"}</Text>
       </TouchableOpacity>
 
-      {/* Modal for Time Picker */}
       <Modal
         transparent={true}
         visible={showTimePicker}
@@ -299,6 +353,49 @@ export default function PostRide() {
         </TouchableOpacity>
       </Modal>
 
+      {/* Car Selection Field */}
+      <TouchableOpacity style={styles.input} onPress={() => setCarModalVisible(true)}>
+        <Text style={styles.inputText}>
+          {selectedCar ? formatCar(selectedCar) : "Select Your vehicle"}
+        </Text>
+      </TouchableOpacity>
+
+      {/* Modal for Car Selection */}
+      <Modal
+        visible={carModalVisible}
+        transparent={true}
+        animationType="slide"
+        onRequestClose={() => setCarModalVisible(false)}
+      >
+        <TouchableOpacity
+          style={styles.modalOverlay}
+          activeOpacity={1}
+          onPressOut={() => setCarModalVisible(false)}
+        >
+          <TouchableOpacity style={styles.modalContent} activeOpacity={1}>
+            <Text style={styles.modalHeader}>Select Your Car</Text>
+            <Picker
+              selectedValue={selectedCar ? selectedCar.licensePlate : (cars[0]?.licensePlate || '')}
+              onValueChange={(itemValue) => {
+                // Find the car that matches the selected license plate
+                const car = cars.find((c) => c.licensePlate === itemValue);
+                if (car) {
+                  setSelectedCar(car);
+                }
+              }}
+              style={styles.picker}
+            >
+              {cars.map((car) => (
+                <Picker.Item key={car.licensePlate} label={formatCar(car)} value={car.licensePlate} />
+              ))}
+            </Picker>
+            <TouchableOpacity style={styles.modalButton} onPress={() => setCarModalVisible(false)}>
+              <Text style={styles.modalButtonText}>Done</Text>
+            </TouchableOpacity>
+          </TouchableOpacity>
+        </TouchableOpacity>
+      </Modal>
+
       {/* Other ride details */}
       <TextInput
         style={styles.input}
@@ -307,7 +404,6 @@ export default function PostRide() {
         keyboardType="numeric"
         maxLength={2}
         onChangeText={(text) => {
-          // Remove any non-numeric characters
           const filteredText = text.replace(/[^0-9]/g, '');
           setMaxPassengers(filteredText);
         }}
@@ -316,20 +412,14 @@ export default function PostRide() {
       <TextInput
         style={styles.input}
         placeholder="Cost"
-        value={`$ ${cost}`} // Always show the dollar sign
+        value={`$ ${cost}`}
         keyboardType="numeric"
         onChangeText={(text) => {
-          // Remove any non-numeric characters except for a single decimal point
           let filteredText = text.replace(/[^0-9.]/g, '');
-        
-          // Prevent multiple decimal points
           if ((filteredText.match(/\./g) || []).length > 1) return;
-        
-          // Ensure correct formatting (prevent ".12" from becoming invalid)
           if (filteredText.startsWith('.')) {
             filteredText = `0${filteredText}`;
           }
-        
           setCost(filteredText);
         }}
       />
@@ -389,6 +479,38 @@ const styles = StyleSheet.create({
     borderRadius: 10,
     alignItems: 'center',
   },
+  modalHeader: {
+    fontSize: 20,
+    marginBottom: 10,
+  },
+  picker: {
+    width: '100%',
+  },
+  modalButton: {
+    backgroundColor: '#007bff',
+    paddingVertical: 10,
+    paddingHorizontal: 20,
+    borderRadius: 8,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginTop: 10,
+    elevation: 3,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.3,
+    shadowRadius: 3,
+    width: '80%',
+    alignSelf: 'center',
+  },
+  modalButtonText: {
+    color: '#fff',
+    fontSize: 16,
+    fontWeight: 'bold',
+  },
+  inputText: {
+    fontSize: 16,
+    color: '#000',
+  },
   button: {
     marginTop: 10,
     width: '100%',
@@ -398,33 +520,8 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   buttonText: {
-    color: '#fff',  // White text
+    color: '#fff',
     fontSize: 18,
     fontWeight: 'bold',
-  },
-  modalButton: {
-    backgroundColor: '#007bff', // Blue color
-    paddingVertical: 10,
-    paddingHorizontal: 20,
-    borderRadius: 8,
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginTop: 10,
-    elevation: 3, // Adds shadow for Android
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.3,
-    shadowRadius: 3,
-    width: '80%', // Adjust width
-    alignSelf: 'center', // Center it in modal
-  },
-  modalButtonText: {
-    color: '#fff', // White text
-    fontSize: 16,
-    fontWeight: 'bold',
-  },
-  inputText: {
-    fontSize: 16,
-    color: '#000',
   },
 });

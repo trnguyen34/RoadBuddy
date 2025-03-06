@@ -8,5 +8,7 @@ export interface Ride {
     currentPassengers: string[];
     maxPassengers: number;
     ownerName: string;
+    car: string;
+    licensePlate: string;
   }
   

@@ -161,8 +161,7 @@ def api_add_car():
       'licensePlate',
       'vin',
       'year',
-      'color',
-      'isPrimary'
+      'color'
     ]
 
     missing_response = check_required_fields(data, required_fields)
@@ -219,6 +218,8 @@ def api_post_ride():
         return jsonify({"error": "Invalid JSON payload"}), 400
 
     required_fields = [
+      'car_select',
+      'licebse_plate',
       'from',
       'to',
       'date',
@@ -236,6 +237,8 @@ def api_post_ride():
         owner_name = session['user'].get('name')
 
         ride_details = {
+            "car": data.get('car_select'),
+            "licebsePlate": data.get('licebse_plate'),
             "from": data.get('from'),
             "to": data.get('to'),
             "date": data.get('date'),
@@ -268,10 +271,9 @@ def api_post_ride():
             'maxPassengers': ride_details['maxPassengers'],
             'cost': ride_details['cost'],
             'currentPassengers': [],
+            'car': ride_details['car'],
+            'licensePlate': ride_details['licebsePlate'],
             'status': 'open',
-            'carModel': '',
-            'licensePlate': '',
-            'carVIN': ''
         }
 
         # Save the ride data to Firestore.
@@ -693,7 +695,7 @@ def api_get_all_notifications():
 
     try:
         user_ref = db.collection('users').document(user_id)
-        notifications_ref = user_ref.collection("notifications")
+        notifications_ref = user_ref.collection('notifications')
         notifications = (
             notifications_ref
             .order_by("createdAt", direction=google.cloud.firestore.Query.DESCENDING)
@@ -737,6 +739,46 @@ def api_get_all_notifications():
         }), 500
     except Exception as e:
         return jsonify({"error": "An unexpected error occurred", "details": str(e)}), 500
+
+@app.route('/api/get-cars', methods=['GET'])
+@auth_required
+def api_get_cars():
+    """
+    Fetch all all cars were added.
+    """
+    try:
+        user_id = get_user_id()
+        if user_id is None:
+            return jsonify({"error": "User not unauthorized"}), 401
+
+        user_ref = db.collection('users').document(user_id)
+        car_ref = user_ref.collection('cars')
+        cars_docs = car_ref.stream()
+
+        cars = []
+        for doc in cars_docs:
+            car_data = doc.to_dict()
+            cars.append({
+                "year": car_data.get("year", ""),
+                "make": car_data.get("make", "").strip(),
+                "model": car_data.get("model", "").strip(),
+                "color": car_data.get("color", ""),
+                "licensePlate": car_data.get("licensePlate", "")
+            })
+
+        if cars:
+            return jsonify({"cars": cars}), 200
+
+        return jsonify({"error": "No car have been added."}), 204
+
+    except FirebaseError as e:
+        return jsonify({
+            "error": "Failed to fetech added cars.",
+            "details": str(e)
+        }), 500
+
+    except Exception as e:
+        return jsonify({"error": "Failed to fetch ride details", "details": str(e)}), 500
 
 @app.route('/api/home', methods=['GET'])
 @auth_required
