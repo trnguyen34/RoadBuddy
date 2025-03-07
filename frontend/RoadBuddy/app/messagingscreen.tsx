@@ -1,7 +1,10 @@
-import React from "react";
+import React, { useState } from "react";
 import { View, Text, TextInput, FlatList, TouchableOpacity, StyleSheet } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import { router, useNavigation } from "expo-router";
+
+
+
 
 // Message Component
 const Message = ({ text, isSender }: { text: string; isSender: boolean }) => {
@@ -12,15 +15,25 @@ const Message = ({ text, isSender }: { text: string; isSender: boolean }) => {
   );
 };
 
+const messages = [
+  { id: "1", text: "Hey, how are you?", isSender: false },
+  { id: "2", text: "I'm good! How about you?", isSender: true },
+  { id: "3", text: "Doing well, thanks!", isSender: false },
+];
+
 // Messaging Screen
 const MessagingScreen = () => {
+  const [text, setText] = useState("");
+  const [refresh, toggleRefresh] = useState(true);
+  const [msgid,setID] = useState(4);
+  function handleMessage(){
+    console.log(text);
+    messages.push({id:msgid.toString(),text:text, isSender:true});
+    setID(msgid+1);
+    toggleRefresh(!refresh);
+    setText("");
+  }
   const navigation = useNavigation();
-  const messages = [
-    { id: "1", text: "Hey, how are you?", isSender: false },
-    { id: "2", text: "I'm good! How about you?", isSender: true },
-    { id: "3", text: "Doing well, thanks!", isSender: false },
-  ];
-
   return (
     <View style={styles.container}>
       {/* Back Button */}
@@ -33,10 +46,11 @@ const MessagingScreen = () => {
         keyExtractor={(item) => item.id}
         renderItem={({ item }) => <Message text={item.text} isSender={item.isSender} />}
         contentContainerStyle={styles.chatContainer}
+        extraData={refresh}
       />
       <View style={styles.inputContainer}>
-        <TextInput style={styles.input} placeholder="Type a message..." placeholderTextColor="#aaa" />
-        <TouchableOpacity style={styles.sendButton}>
+        <TextInput style={styles.input} placeholder="Type a message..." defaultValue={text} placeholderTextColor="#aaa" onChangeText={newText => setText(newText)}/>
+        <TouchableOpacity style={styles.sendButton} onPress={() => handleMessage()}>
           <Ionicons name="send" size={20} color="white" />
         </TouchableOpacity>
       </View>

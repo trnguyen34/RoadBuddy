@@ -159,7 +159,7 @@ export default function Home() {
 
       {/* Bottom Right Button */}
       <TouchableOpacity onPress={() => router.push("/messagingscreen")} style={[styles.bottomRightButton, styles.bottomRightButton]}>
-        <Text style={{ color: 'black' }}>P</Text>
+        <Ionicons name="chatbox-outline" size={20} color="black"/>
       </TouchableOpacity>
       <View style={styles.footer}>
       </View>
