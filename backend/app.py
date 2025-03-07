@@ -1,12 +1,13 @@
 from datetime import (
     timedelta, datetime
 )
+
 from functools import wraps
 import os
 import stripe
 import pytz
 from flask import (
-    Flask, request, session, jsonify
+    Flask, request, session, jsonify, render_template
 )
 import google.cloud
 import firebase_admin
@@ -791,6 +792,77 @@ def api_home():
     print_json(user)
 
     return jsonify({"message": f"Welcome {user_name}!"}), 200
+
+@app.route('/post-message', methods=['GET', 'POST'])
+@auth_required
+def post_message():
+    """
+    Posting a message. Returns: JSON response if successful, or renders the postMessage form.
+    """
+    if request.method == 'POST':
+        # Ensure the request contains JSON data
+        if request.content_type != 'application/json':
+            # print(f"Received Content-Type: {request.content_type}")
+            return jsonify({
+                "error":
+                "Invalid content type, expected application/json,received {request.content_type}"
+                }), 400
+
+        try:
+            data = request.get_json()
+            if not data:
+                return jsonify({"error": "Invalid JSON data"}), 400
+
+            sender_id = data.get('from')  # Expecting sender's UUID
+            receiver_id = data.get('to')  # Expecting receiver's UUID
+
+            if not sender_id or not receiver_id:
+                return jsonify({"error": "Missing 'to' or 'from' UUID"}), 400
+
+            # Ensure the sender is authenticated and matches the session user
+            session_user_id = session.get('user', {}).get('uid')
+            if sender_id != session_user_id:
+                return jsonify({"error": "Sender ID does not match session user"}), 401
+
+            message_details = {
+                'to': receiver_id,
+                'from': sender_id,
+                'content': data.get('content'),
+                'time': datetime.now().strftime('%Y-%m-%d %H:%M')
+            }
+
+            # Store message in both sender's and receiver's message collections
+            sender_ref = db.collection('users').document(sender_id).collection('messages')
+            receiver_ref = db.collection('users').document(receiver_id).collection('messages')
+
+            sender_ref.document().set(message_details)
+            receiver_ref.document().set(message_details)
+
+            return jsonify({"message": "Message posted successfully", "data": message_details}), 201
+        except FirebaseError:
+            return jsonify({"error": "An error occurred? Please try again."}), 500
+        except Exception as e:
+            return jsonify({"error": str(e)}), 500
+    elif request.method == 'GET':
+        try:
+            user_id = session.get('user', {}).get('uid')
+            if not user_id:
+                return jsonify({"error": "Unauthorized"}), 401
+
+            # Fetch messages where the user is either the sender or the receiver
+            messages_ref = db.collection_group('messages')
+            messages = [
+                doc.to_dict() for doc in messages_ref.stream()
+                if doc.to_dict().get('from') == user_id or doc.to_dict().get('to') == user_id
+            ]
+
+            return jsonify({"messages": messages}), 200
+        except FirebaseError:
+            return jsonify({"error": "Failed to retrieve messages."}), 500
+        except Exception as e:
+            return jsonify({"error": str(e)}), 500
+
+    return render_template('postMessage.html')
 
 def delete_past_rides():
     """
