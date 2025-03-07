@@ -397,6 +397,9 @@ const styles = StyleSheet.create({
   selectorText: {
     fontSize: 16,
   },
+  errorBox:{
+
+  },
   placeholderText: {
     color: "#999",
     fontWeight: "normal",
