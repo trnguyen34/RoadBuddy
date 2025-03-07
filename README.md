@@ -114,4 +114,9 @@ Firestore Root
 │   │   │   │   ├── year: 2022
 │   │   │   │   ├── color: “Black”
 │   │   │   │   ├── isPrimary: true
+│   │   ├── Messages (Subcollection)
+│   │   │   ├── {FromID}
+│   │   │   │   ├── From: "John Doe"
+│   │   │   │   ├── timestamp: "<yyyy>-<mm>-<dd>"
+│   │   │   │   ├── Message: "Can I join your carpool?"
 ```
