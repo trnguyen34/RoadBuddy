@@ -861,8 +861,6 @@ def api_send_message():
         )
 
         for participant_id in participants:
-            print(participant_id)
-            print(user_id)
             if participant_id != user_id:
                 store_notification(db, participant_id, ride_id, notification_msg)
 
@@ -870,6 +868,24 @@ def api_send_message():
 
     except Exception as e:
         return jsonify({"error": "An unexpected error occurred", "details": str(e)}), 500
+
+@app.route('/api/get-messages', methods=['GET'])
+@auth_required
+def api_get_message():
+    """
+    Fetch all messages from a rideChat.
+    """
+    data = request.get_json()
+    if not data:
+        return jsonify({"error": "Invalid JSON payload"}), 400
+
+    required_fields = [
+      'rideChatId'
+    ]
+
+    missing_response = check_required_fields(data, required_fields)
+    if missing_response:
+        return jsonify(missing_response[0]), missing_response[1]
 
 def delete_past_rides():
     """
