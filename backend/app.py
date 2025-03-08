@@ -19,7 +19,8 @@ from apscheduler.schedulers.background import BackgroundScheduler
 from utils import (
     is_duplicate_car, is_duplicate_ride, print_json, check_required_fields,
     remove_ride_from_user, remove_user_from_ride_passenger, add_user_to_ride_passenger,
-    get_document_from_db, store_notification, add_user_ride_chat, remove_participant_from_ride_chat
+    get_document_from_db, store_notification, add_user_ride_chat, remove_participant_from_ride_chat,
+    get_sorted_messages
 )
 
 app = Flask(__name__)
@@ -842,17 +843,28 @@ def api_send_message():
         ride_chat_doc = ride_chats_ref.get()
         ride_chat_data = ride_chat_doc.to_dict()
         participants = ride_chat_data.get('participants')
+        chat_owner_id = ride_chat_data.get('owner')
+
+        time = google.cloud.firestore.SERVER_TIMESTAMP
+        ride_chats_ref.update({
+            "timestamp": time
+        })
 
         if user_id not in participants:
-            return jsonify({"error": "User is not participant of this chat."}), 400
+            return jsonify({"error": "User is not a participant of this chat."}), 400
 
         message_ref = ride_chats_ref.collection('messages').document()
+
+        is_owner = False
+        if user_id == chat_owner_id:
+            is_owner = True
 
         message_data = {
             "senderId": user_id,
             "senderName": user_name,
             "text": data.get('text'),
-            "timestamp": google.cloud.firestore.SERVER_TIMESTAMP
+            "timestamp": time,
+            "isOwner": is_owner
         }
 
         message_ref.set(message_data)
@@ -876,13 +888,17 @@ def api_send_message():
 
 @app.route('/api/get-messages', methods=['GET'])
 @auth_required
-def api_get_message():
+def api_get_messages():
     """
     Fetch all messages from a rideChat.
     """
     data = request.get_json()
     if not data:
         return jsonify({"error": "Invalid JSON payload"}), 400
+
+    user_id = get_user_id()
+    if user_id is None:
+        return jsonify({"error": "User not unauthorized"}), 401
 
     required_fields = [
       'rideChatId'
@@ -891,6 +907,24 @@ def api_get_message():
     missing_response = check_required_fields(data, required_fields)
     if missing_response:
         return jsonify(missing_response[0]), missing_response[1]
+
+    try:
+        ride_chat_id = data.get('rideChatId')
+        ride_chats_ref = db.collection('ride_chats').document(ride_chat_id)
+        ride_chat_doc = ride_chats_ref.get()
+        ride_chat_data = ride_chat_doc.to_dict()
+        participants = ride_chat_data.get('participants')
+
+        if user_id not in participants:
+            return jsonify({"error": "User is not a participant of this chat."}), 400
+
+        messages = get_sorted_messages(db, ride_chat_id)
+        print(messages)
+
+        return jsonify({"messages": messages}), 200
+
+    except Exception as e:
+        return jsonify({"error": "An unexpected error occurred", "details": str(e)}), 500
 
 def delete_past_rides():
     """
@@ -926,6 +960,7 @@ def delete_past_rides():
 
     except Exception as e:
         print(f"Error deleting past rides: {e}")
+
 
 scheduler = BackgroundScheduler()
 scheduler.add_job(delete_past_rides, "interval", minutes=5)

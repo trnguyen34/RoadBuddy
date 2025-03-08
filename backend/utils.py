@@ -1,5 +1,6 @@
 from datetime import datetime
 import json
+import pytz
 from google.cloud.firestore import (
     ArrayRemove, ArrayUnion
 )
@@ -230,7 +231,35 @@ def add_user_ride_chat(db, user_id, chat_id):
 
 def remove_participant_from_ride_chat(db, user_id, ride_id):
     """Remove a participant from a ride chat"""
-    user_doc_ref = db.collection("ride_chats").document(ride_id)
-    user_doc_ref.update({
+    ride_chat_doc = db.collection("ride_chats").document(ride_id)
+    ride_chat_doc.update({
         "participants": ArrayRemove([user_id])
     })
+
+def get_sorted_messages(db, ride_id):
+    """
+    Fetch all messages for a ride chat, sorted by timestamp.
+    """
+    pacific_tz = pytz.timezone("America/Los_Angeles")
+
+    messages_ref = (
+        db.collection("ride_chats")
+        .document(ride_id)
+        .collection("messages")
+        .order_by("timestamp", direction=firestore.Query.ASCENDING)
+    )
+
+    messages = messages_ref.stream()
+
+    sorted_messages = {}
+    for index, doc in enumerate(messages, start=1):
+        message_data = doc.to_dict()
+        message_data["id"] = doc.id
+
+        utc_dt = message_data["timestamp"].replace(tzinfo=pytz.utc)  # Ensure UTC timezone
+        pacific_dt = utc_dt.astimezone(pacific_tz)  # Convert to PT
+        message_data["timestamp"] = pacific_dt.strftime("%Y-%m-%d %I:%M %p PT")
+
+        sorted_messages[index] = message_data
+
+    return sorted_messages
