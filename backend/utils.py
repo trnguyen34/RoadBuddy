@@ -218,3 +218,13 @@ def store_notification(db, ride_owner, ride_id, message):
     })
 
     user_ref.set({"unread_notification_count": firestore.Increment(1)}, merge=True)
+
+def add_user_ride_chat(db, user_id, chat_id):
+    """
+    Add a user to a ride chat.
+    """
+
+    ride_chats_ref = db.collection('ride_chats').document(chat_id)
+    ride_chats_ref.update({
+        "participants": ArrayUnion([user_id])
+    })

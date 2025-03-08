@@ -7,7 +7,7 @@ import os
 import stripe
 import pytz
 from flask import (
-    Flask, request, session, jsonify, render_template
+    Flask, request, session, jsonify
 )
 import google.cloud
 import firebase_admin
@@ -19,7 +19,7 @@ from apscheduler.schedulers.background import BackgroundScheduler
 from utils import (
     is_duplicate_car, is_duplicate_ride, print_json, check_required_fields,
     remove_ride_from_user, remove_user_from_ride_passenger, add_user_to_ride_passenger,
-    get_document_from_db, store_notification
+    get_document_from_db, store_notification, add_user_ride_chat
 )
 
 app = Flask(__name__)
@@ -252,6 +252,16 @@ def api_post_ride():
         ride_ref = db.collection('rides').document()
         ride_id = ride_ref.id
 
+        # Generate new rideChat document with rideID.
+        db.collection("ride_chats").document(ride_id).set({
+            'rideId': ride_id,
+            'participants': [owner_id],
+            'lastMessage': "",
+            'from': ride_details['from'],
+            'to': ride_details['to'],
+            'lastMessageTimestamp': google.cloud.firestore.SERVER_TIMESTAMP,
+        })
+
         # Get the user document from Firestore.
         user_ref = db.collection('users').document(owner_id)
         user_doc = user_ref.get()
@@ -328,6 +338,8 @@ def api_request_ride():
         rides_joined = user_doc.get('ridesJoined')
         rides_joined.append(ride_id)
         user_doc_ref.update({'ridesJoined': rides_joined})
+
+        add_user_ride_chat(db, user_id, ride_id)
 
         start = ride_doc.get("from")
         destination = ride_doc.get("to")
@@ -793,76 +805,71 @@ def api_home():
 
     return jsonify({"message": f"Welcome {user_name}!"}), 200
 
-@app.route('/post-message', methods=['GET', 'POST'])
+@app.route('/api/send-message', methods=['POST'])
 @auth_required
-def post_message():
+def api_send_message():
     """
-    Posting a message. Returns: JSON response if successful, or renders the postMessage form.
+    Send a message.
     """
-    if request.method == 'POST':
-        # Ensure the request contains JSON data
-        if request.content_type != 'application/json':
-            # print(f"Received Content-Type: {request.content_type}")
-            return jsonify({
-                "error":
-                "Invalid content type, expected application/json,received {request.content_type}"
-                }), 400
+    data = request.get_json()
+    if not data:
+        return jsonify({"error": "Invalid JSON payload"}), 400
 
-        try:
-            data = request.get_json()
-            if not data:
-                return jsonify({"error": "Invalid JSON data"}), 400
+    required_fields = [
+      'rideId',
+      'text'
+    ]
 
-            sender_id = data.get('from')  # Expecting sender's UUID
-            receiver_id = data.get('to')  # Expecting receiver's UUID
+    missing_response = check_required_fields(data, required_fields)
+    if missing_response:
+        return jsonify(missing_response[0]), missing_response[1]
 
-            if not sender_id or not receiver_id:
-                return jsonify({"error": "Missing 'to' or 'from' UUID"}), 400
+    user_id = get_user_id()
+    if user_id is None:
+        return jsonify({"error": "User not unauthorized"}), 401
 
-            # Ensure the sender is authenticated and matches the session user
-            session_user_id = session.get('user', {}).get('uid')
-            if sender_id != session_user_id:
-                return jsonify({"error": "Sender ID does not match session user"}), 401
+    user = session.get('user', {})
+    user_name = user.get('name', 'Guest')
 
-            message_details = {
-                'to': receiver_id,
-                'from': sender_id,
-                'content': data.get('content'),
-                'time': datetime.now().strftime('%Y-%m-%d %H:%M')
-            }
+    try:
+        ride_id = data.get('rideId')
+        ride_chats_ref = db.collection('ride_chats').document(ride_id)
+        ride_chat_doc = ride_chats_ref.get()
+        ride_chat_data = ride_chat_doc.to_dict()
+        participants = ride_chat_data.get('participants')
 
-            # Store message in both sender's and receiver's message collections
-            sender_ref = db.collection('users').document(sender_id).collection('messages')
-            receiver_ref = db.collection('users').document(receiver_id).collection('messages')
+        if user_id not in participants:
+            return jsonify({"error": "User is not participant of this chat."}), 400
 
-            sender_ref.document().set(message_details)
-            receiver_ref.document().set(message_details)
+        message_ref = ride_chats_ref.collection('messages').document()
 
-            return jsonify({"message": "Message posted successfully", "data": message_details}), 201
-        except FirebaseError:
-            return jsonify({"error": "An error occurred? Please try again."}), 500
-        except Exception as e:
-            return jsonify({"error": str(e)}), 500
-    elif request.method == 'GET':
-        try:
-            user_id = session.get('user', {}).get('uid')
-            if not user_id:
-                return jsonify({"error": "Unauthorized"}), 401
+        message_data = {
+            "senderId": user_id,
+            "senderName": user_name,
+            "text": data.get('text'),
+            "timestamp": google.cloud.firestore.SERVER_TIMESTAMP
+        }
 
-            # Fetch messages where the user is either the sender or the receiver
-            messages_ref = db.collection_group('messages')
-            messages = [
-                doc.to_dict() for doc in messages_ref.stream()
-                if doc.to_dict().get('from') == user_id or doc.to_dict().get('to') == user_id
-            ]
+        message_ref.set(message_data)
 
-            return jsonify({"messages": messages}), 200
-        except FirebaseError:
-            return jsonify({"error": "Failed to retrieve messages."}), 500
-        except Exception as e:
-            return jsonify({"error": str(e)}), 500
+        start = ride_chat_data.get('from')
+        destination = ride_chat_data.get('to')
+        notification_msg = (
+            f"{user_name} has sent a message.\n"
+            f"From: {start}\n"
+            f"To: {destination}"
+        )
 
-    return render_template('postMessage.html')
+        for participant_id in participants:
+            print(participant_id)
+            print(user_id)
+            if participant_id != user_id:
+                store_notification(db, participant_id, ride_id, notification_msg)
+
+        return jsonify({"message": "Message has been sent"}), 201
+
+    except Exception as e:
+        return jsonify({"error": "An unexpected error occurred", "details": str(e)}), 500
 
 def delete_past_rides():
     """
