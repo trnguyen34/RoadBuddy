@@ -19,7 +19,7 @@ from apscheduler.schedulers.background import BackgroundScheduler
 from utils import (
     is_duplicate_car, is_duplicate_ride, print_json, check_required_fields,
     remove_ride_from_user, remove_user_from_ride_passenger, add_user_to_ride_passenger,
-    get_document_from_db, store_notification, add_user_ride_chat
+    get_document_from_db, store_notification, add_user_ride_chat, remove_participant_from_ride_chat
 )
 
 app = Flask(__name__)
@@ -588,6 +588,8 @@ def api_cancel_ride():
                 if not remove_ride_id:
                     add_user_to_ride_passenger(db, user_id, ride_id, "currentPassengers")
                     return jsonify({"error": "Ride failed to cancel"}), 400
+
+                remove_participant_from_ride_chat(db, user_id, ride_id)
 
                 start = ride_doc.get("from")
                 destination = ride_doc.get("to")
