@@ -636,6 +636,8 @@ def api_delete_ride():
         if not ride_doc.exists:
             return jsonify({"error": "Ride not found"}), 404
 
+        ride_chat_doc_ref = db.collection('ride_chats').document(ride_id)
+
         ride_data = ride_doc.to_dict()
         ride_owner_id = ride_data.get("ownerID")
         current_passengers = ride_data.get("currentPassengers", [])
@@ -664,6 +666,7 @@ def api_delete_ride():
         remove_ride_id = remove_ride_from_user(db, user_id, ride_id, "ridesPosted")
         if remove_ride_id:
             ride_doc_ref.delete()
+            ride_chat_doc_ref.delete()
             return jsonify({"message": "Ride successfully deleted"}), 201
 
         return jsonify({
