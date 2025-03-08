@@ -20,6 +20,7 @@ import { router } from 'expo-router';
 import DateTimePicker from '@react-native-community/datetimepicker';
 import { BASE_URL } from "../configs/base-url";
 import { googlePlaceApi } from "../configs/google-api";
+import { Ionicons } from "@expo/vector-icons";
 
 interface Car {
   make: string;
@@ -195,6 +196,12 @@ export default function PostRide() {
 
   return (
     <View style={styles.container}>
+      <View style={[styles.headerContainer]}>
+        <TouchableOpacity style={styles.backButton} onPress={() => router.replace('/home')}>
+          <Ionicons name="arrow-back" size={24} color="#FFF" />
+        </TouchableOpacity>
+        <Text style={styles.title}>Post A Ride</Text>
+      </View>
       {/* "From" Autocomplete */}
       <SafeAreaView style={styles.autocompleteContainer}>
         <GooglePlacesAutocomplete
@@ -440,8 +447,8 @@ export default function PostRide() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    padding: 20,
-    backgroundColor: '#fff',
+    // padding: 20,
+    backgroundColor: '#F8F3E9',
   },
   header: {
     fontSize: 28,
@@ -455,9 +462,11 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderRadius: 8,
     paddingHorizontal: 10,
-    marginBottom: 12,
+    marginBottom: 22,
     fontSize: 16,
     justifyContent: 'center',
+    backgroundColor: '#fff',
+    boxShadow: '0px 4px 6px rgba(0, 0, 0, 0.2)',
   },
   error: {
     color: 'red',
@@ -465,7 +474,8 @@ const styles = StyleSheet.create({
     marginTop: 10,
   },
   autocompleteContainer: {
-    marginBottom: 12,
+    marginBottom: 22,
+    boxShadow: '0px 4px 6px rgba(0, 0, 0, 0.2)',
   },
   modalOverlay: {
     flex: 1,
@@ -518,10 +528,34 @@ const styles = StyleSheet.create({
     backgroundColor: '#C5D1AB',
     borderRadius: 20,
     alignItems: 'center',
+    boxShadow: '0px 4px 6px rgba(0, 0, 0, 0.2)',
   },
   buttonText: {
     color: '#fff',
     fontSize: 18,
     fontWeight: 'bold',
+  },
+  headerContainer: {
+    backgroundColor: "#8C7B6B",
+    borderBottomLeftRadius: 50,
+    borderBottomRightRadius: 50,
+    paddingBottom: 50,
+    alignItems: "center",
+    paddingTop: 20,
+    marginTop: 0,
+    marginBottom: 30,
+  },
+  backButton: {
+    position: "absolute",
+    left: 15,
+    top: 22,
+    marginTop: 70,
+  },
+  title: {
+    fontSize: 24,
+    fontWeight: "bold",
+    color: "#F8F3E9",
+    marginTop: 70,
+    // marginBottom: 40,
   },
 });
