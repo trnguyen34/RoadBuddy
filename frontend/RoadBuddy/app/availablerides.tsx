@@ -11,9 +11,7 @@ import {
   RefreshControl,
   Platform,
 } from "react-native";
-import ModalPicker from 'react-native-modal-selector';
 import axios from "axios";
-import { Picker } from "@react-native-picker/picker";
 import { Ionicons } from "@expo/vector-icons";
 import { BASE_URL } from "../configs/base-url";
 import { router, useNavigation } from "expo-router";

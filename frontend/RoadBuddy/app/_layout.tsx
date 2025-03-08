@@ -64,6 +64,13 @@ export default function RootLayout() {
           }}
         />
         <Stack.Screen
+          name="messagingscreen"
+          options={{
+            title: "",
+            headerShown: false,
+          }}
+        />
+        <Stack.Screen
           name="availablerides"
           options={{
             title: "",

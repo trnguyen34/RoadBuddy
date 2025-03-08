@@ -152,7 +152,6 @@ export default function AddCar() {
       {error ? (
       <Animated.View
           style={[
-            styles.errorBox,
             { opacity: fadeAnim, transform: [{ translateY: translateYAnim }] },
           ]}
         >
