@@ -33,7 +33,6 @@ app.config['PERMANENT_SESSION_LIFETIME'] = timedelta(days=1)
 app.config['SESSION_REFRESH_EACH_REQUEST'] = True
 app.config['SESSION_COOKIE_SAMESITE'] = 'Lax'
 
-# Initialize Firebase
 cred = credentials.Certificate("firebase-config.json")
 firebase_admin.initialize_app(cred)
 db = firestore.client()
@@ -71,21 +70,15 @@ def authorize():
     """
     Authorizes a user based on a Bearer token in the request header.
     """
-    # Retrieve the token from the Authorization header.
     token = request.headers.get('Authorization')
     if not token or not token.startswith('Bearer '):
-        # Return a JSON error response if no valid token is provided.
         return jsonify({"error": "Unauthorized: No token provided"}), 401
 
-    # Remove 'Bearer ' prefix from the token.
     token = token[7:]
     try:
-        # Verify the token with Firebase.
         decoded_token = auth.verify_id_token(token)
-        # Store the decoded token (user info) in the session.
         session['user'] = decoded_token
 
-        # Create a JSON response indicating success.
         response = jsonify({"message": "Logged in successfully", "cookie": decoded_token})
         return response, 200
     except InvalidIdTokenError:
@@ -934,8 +927,8 @@ def api_check_ride_chat(ride_chat_id):
 
     if ride_chat_doc.exists:
         return jsonify({"exists": True}), 200
-    else:
-        return jsonify({"exists": False, "error": "Ride chat not found"}), 404
+
+    return jsonify({"exists": False, "error": "Ride chat not found"}), 404
 
 @app.route('/api/get-all-user-ride-chats', methods=['GET'])
 @auth_required
