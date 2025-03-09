@@ -78,8 +78,8 @@ const ComingUpRides = () => {
           })
         }
       >
-        <Text style={styles.lastMessage}>{item.UsernameLastMessage || "No one has send a message yet."}: {item.lastMessage || "No messages yet."}</Text>
-        <Text style={styles.usernameLastMessage}>Username: {item.UsernameLastMessage || "No one has send a message yet."}</Text>
+        <Text style={styles.lastMessage}>{item.lastMessage || "No messages yet."}</Text>
+        <Text style={styles.usernameLastMessage}>Name: {item.UsernameLastMessage || "No one has send a message yet."}</Text>
         <Text style={styles.rideHeader}>
           {item.from} → {item.to}
         </Text>
