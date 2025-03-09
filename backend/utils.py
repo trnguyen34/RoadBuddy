@@ -258,6 +258,7 @@ def get_sorted_messages(db, ride_id):
 
         utc_dt = message_data["timestamp"].replace(tzinfo=pytz.utc)
         pacific_dt = utc_dt.astimezone(pacific_tz)
+
         message_data["timestamp"] = pacific_dt.strftime("%Y-%m-%d %I:%M %p PT")
 
         sorted_messages[index] = message_data

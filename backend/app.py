@@ -990,6 +990,7 @@ def delete_past_rides():
     except Exception as e:
         print(f"Error deleting past rides: {e}")
 
+
 scheduler = BackgroundScheduler()
 scheduler.add_job(delete_past_rides, "interval", minutes=5)
 scheduler.start()
