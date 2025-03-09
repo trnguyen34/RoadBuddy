@@ -101,7 +101,6 @@ function RideDetailsScreen() {
     console.log("BottomSheet index:", index);
   }, []);
 
-  // Animated value for error fade-out
   const fadeAnim = useRef(new Animated.Value(1)).current;
 
   // Fetch ride details from the API
@@ -238,6 +237,22 @@ function RideDetailsScreen() {
       setCancellingLoading(false);
     }
   };
+
+  const rideChat = async() => {
+    try {
+      const response = await axios.get(`${BASE_URL}/api/check-ride-chat/${id}`);
+        if (response.status === 200 && response.data) {
+          router.push({
+            pathname: "/messagingscreen",
+            params: { rideChatId: id },
+          });
+        } else {
+          setError("This ride chat is no longer available");
+        }
+    } catch {
+      setError("This ride chat is no longer available");
+    }
+  }
 
   if (error && ride === null) {
     return (
@@ -419,6 +434,15 @@ function RideDetailsScreen() {
             <Text style={styles.cardText}>Cost: ${ride.cost}</Text>
             <Text style={styles.cardText}>Driver: {ride.ownerName}</Text>
           </View>
+
+          {/* Chat Bottom */}
+          <TouchableOpacity 
+            style={styles.chatButton} 
+            onPress={rideChat}
+          >
+            <Text style={styles.chatButtonText}>Chat</Text>
+          </TouchableOpacity>
+            
           {cancellingLoading ? (
             <ActivityIndicator size="large" color="#8C7B6B" />
           ) : (
@@ -428,6 +452,7 @@ function RideDetailsScreen() {
             >
               <Text style={styles.cancelButtonText}>{cancelButtonText}</Text>
             </TouchableOpacity>
+            
           )}
         </BottomSheetView>
       </BottomSheet>
@@ -539,6 +564,23 @@ const styles = StyleSheet.create({
     fontWeight: "bold",
     color: "#FFF",
   },
+  chatButtonText: {
+    fontSize: 16,
+    fontWeight: "bold",
+    color: "#FFF",
+  },
+  chatButton: {
+    backgroundColor: "#A3A380",
+    paddingVertical: 14,
+    borderRadius: 20,
+    alignItems: "center",
+    shadowColor: "#000",
+    shadowOffset: { width: 1, height: 2 },
+    shadowOpacity: 0.2,
+    shadowRadius: 4,
+    elevation: 2,
+    marginTop: 5,
+  }
 });
 
 export default function RideDetails() {
