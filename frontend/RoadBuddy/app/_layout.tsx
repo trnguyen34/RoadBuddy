@@ -105,6 +105,13 @@ export default function RootLayout() {
             headerShown: false,
           }}
         />
+        <Stack.Screen 
+          name="userallridechats" 
+          options={{
+            title: "userallridechats",
+            headerShown: false,
+          }}
+        />
       </Stack>
     </GestureHandlerRootView>
   );

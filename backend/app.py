@@ -20,7 +20,7 @@ from utils import (
     is_duplicate_car, is_duplicate_ride, print_json, check_required_fields,
     remove_ride_from_user, remove_user_from_ride_passenger, add_user_to_ride_passenger,
     get_document_from_db, store_notification, add_user_ride_chat, remove_participant_from_ride_chat,
-    get_sorted_messages
+    get_sorted_messages, get_sorted_ride_chats
 )
 
 app = Flask(__name__)
@@ -260,7 +260,12 @@ def api_post_ride():
             'lastMessage': "",
             'from': ride_details['from'],
             'to': ride_details['to'],
+            'owner': owner_id,
+            'ownerName': owner_name,
+            'date': ride_details['date'],
+            'departureTime': ride_details['departureTime'],
             'lastMessageTimestamp': google.cloud.firestore.SERVER_TIMESTAMP,
+            'UsernameLastMessage': ""
         })
 
         # Get the user document from Firestore.
@@ -847,7 +852,9 @@ def api_send_message():
 
         time = google.cloud.firestore.SERVER_TIMESTAMP
         ride_chats_ref.update({
-            "timestamp": time
+            "timestamp": time,
+            "lastMessage": data.get('text'),
+            "UsernameLastMessage": user_name
         })
 
         if user_id not in participants:
@@ -886,45 +893,74 @@ def api_send_message():
     except Exception as e:
         return jsonify({"error": "An unexpected error occurred", "details": str(e)}), 500
 
-@app.route('/api/get-messages', methods=['GET'])
+@app.route('/api/get-messages/<ride_chat_id>', methods=['GET'])
 @auth_required
-def api_get_messages():
+def api_get_messages(ride_chat_id):
     """
     Fetch all messages from a rideChat.
     """
-    data = request.get_json()
-    if not data:
-        return jsonify({"error": "Invalid JSON payload"}), 400
-
     user_id = get_user_id()
     if user_id is None:
         return jsonify({"error": "User not unauthorized"}), 401
 
-    required_fields = [
-      'rideChatId'
-    ]
-
-    missing_response = check_required_fields(data, required_fields)
-    if missing_response:
-        return jsonify(missing_response[0]), missing_response[1]
-
     try:
-        ride_chat_id = data.get('rideChatId')
         ride_chats_ref = db.collection('ride_chats').document(ride_chat_id)
         ride_chat_doc = ride_chats_ref.get()
+
+        if not ride_chat_doc.exists:
+            return jsonify({"error": "Chat not found"}), 404
+
         ride_chat_data = ride_chat_doc.to_dict()
         participants = ride_chat_data.get('participants')
 
         if user_id not in participants:
-            return jsonify({"error": "User is not a participant of this chat."}), 400
+            return jsonify({"error": "User is not a participant of this chat."}), 403
 
         messages = get_sorted_messages(db, ride_chat_id)
-        print(messages)
 
         return jsonify({"messages": messages}), 200
 
     except Exception as e:
         return jsonify({"error": "An unexpected error occurred", "details": str(e)}), 500
+
+@app.route('/api/check-ride-chat/<ride_chat_id>', methods=['GET'])
+@auth_required
+def api_check_ride_chat(ride_chat_id):
+    """
+    Check if a rideChat document exists.
+    """
+    ride_chat_ref = db.collection('ride_chats').document(ride_chat_id)
+    ride_chat_doc = ride_chat_ref.get()
+
+    if ride_chat_doc.exists:
+        return jsonify({"exists": True}), 200
+    else:
+        return jsonify({"exists": False, "error": "Ride chat not found"}), 404
+
+@app.route('/api/get-all-user-ride-chats', methods=['GET'])
+@auth_required
+def api_get_all_user_ride_chats():
+    """
+    Fetch all the ride chats for the user.
+    """
+    user_id = get_user_id()
+    if user_id is None:
+        return jsonify({"error": "User not unauthorized"}), 401
+
+    try:
+        user_doc_ref = db.collection('users').document(user_id)
+        user_doc = user_doc_ref.get()
+
+        ride_joined = user_doc.get('ridesJoined')
+        ride_posted = user_doc.get('ridesPosted')
+        ride_chat_ids = ride_joined + ride_posted
+
+        chats = get_sorted_ride_chats(db, ride_chat_ids)
+
+        return jsonify({"ride_chats": chats}), 200
+
+    except Exception as e:
+        return jsonify({"error": "An unexpected error occurred.", "details": str(e)}), 500
 
 def delete_past_rides():
     """
@@ -960,7 +996,6 @@ def delete_past_rides():
 
     except Exception as e:
         print(f"Error deleting past rides: {e}")
-
 
 scheduler = BackgroundScheduler()
 scheduler.add_job(delete_past_rides, "interval", minutes=5)

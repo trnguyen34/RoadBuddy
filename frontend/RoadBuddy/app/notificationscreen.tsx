@@ -78,7 +78,6 @@ export default function NotificationScreen() {
   const renderNotificationItem = ({ item }: { item: Notification }) => {
     const handlePress = async () => {
       try {
-        // Replace with your actual API endpoint and logic
         const response = await axios.get(`${BASE_URL}/api/rides/${item.rideId}`);
         if (response.status === 200 && response.data) {
           router.push({

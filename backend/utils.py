@@ -256,10 +256,43 @@ def get_sorted_messages(db, ride_id):
         message_data = doc.to_dict()
         message_data["id"] = doc.id
 
-        utc_dt = message_data["timestamp"].replace(tzinfo=pytz.utc)  # Ensure UTC timezone
-        pacific_dt = utc_dt.astimezone(pacific_tz)  # Convert to PT
+        utc_dt = message_data["timestamp"].replace(tzinfo=pytz.utc)
+        pacific_dt = utc_dt.astimezone(pacific_tz)
         message_data["timestamp"] = pacific_dt.strftime("%Y-%m-%d %I:%M %p PT")
 
         sorted_messages[index] = message_data
 
     return sorted_messages
+
+def get_sorted_ride_chats(db, arr_ride_chat_ids):
+    """
+    Fetch ride chats, sorted by last message timestamp in descending order.
+    """
+    pacific_tz = pytz.timezone("America/Los_Angeles")
+
+    chats = []
+    for chat_id in arr_ride_chat_ids:
+        ride_chats_ref = db.collection("ride_chats").document(chat_id)
+        ride_chat_doc = ride_chats_ref.get()
+
+        if not ride_chat_doc.exists:
+            continue
+
+        ride_chat_data = ride_chat_doc.to_dict()
+        ride_chat_data["id"] = chat_id
+
+        utc_dt = ride_chat_data["lastMessageTimestamp"].replace(tzinfo=pytz.utc)
+        pacific_dt = utc_dt.astimezone(pacific_tz)
+        ride_chat_data["lastMessageTimestamp"] = pacific_dt.strftime("%Y-%m-%d %I:%M %p PT")
+
+        chats.append(ride_chat_data)
+
+    def sort_by_timestamp(chat):
+        timestamp = chat["lastMessageTimestamp"]
+        if timestamp:
+            return datetime.strptime(timestamp, "%Y-%m-%d %I:%M %p PT")
+        return datetime.min
+
+    chats.sort(key=sort_by_timestamp, reverse=True)
+
+    return chats
