@@ -1,6 +1,7 @@
 from datetime import (
     timedelta, datetime
 )
+
 from functools import wraps
 import os
 import stripe
@@ -18,7 +19,8 @@ from apscheduler.schedulers.background import BackgroundScheduler
 from utils import (
     is_duplicate_car, is_duplicate_ride, print_json, check_required_fields,
     remove_ride_from_user, remove_user_from_ride_passenger, add_user_to_ride_passenger,
-    get_document_from_db, store_notification
+    get_document_from_db, store_notification, add_user_ride_chat, remove_participant_from_ride_chat,
+    get_sorted_messages, get_sorted_ride_chats
 )
 
 app = Flask(__name__)
@@ -31,7 +33,6 @@ app.config['PERMANENT_SESSION_LIFETIME'] = timedelta(days=1)
 app.config['SESSION_REFRESH_EACH_REQUEST'] = True
 app.config['SESSION_COOKIE_SAMESITE'] = 'Lax'
 
-# Initialize Firebase
 cred = credentials.Certificate("firebase-config.json")
 firebase_admin.initialize_app(cred)
 db = firestore.client()
@@ -69,21 +70,15 @@ def authorize():
     """
     Authorizes a user based on a Bearer token in the request header.
     """
-    # Retrieve the token from the Authorization header.
     token = request.headers.get('Authorization')
     if not token or not token.startswith('Bearer '):
-        # Return a JSON error response if no valid token is provided.
         return jsonify({"error": "Unauthorized: No token provided"}), 401
 
-    # Remove 'Bearer ' prefix from the token.
     token = token[7:]
     try:
-        # Verify the token with Firebase.
         decoded_token = auth.verify_id_token(token)
-        # Store the decoded token (user info) in the session.
         session['user'] = decoded_token
 
-        # Create a JSON response indicating success.
         response = jsonify({"message": "Logged in successfully", "cookie": decoded_token})
         return response, 200
     except InvalidIdTokenError:
@@ -251,6 +246,21 @@ def api_post_ride():
         ride_ref = db.collection('rides').document()
         ride_id = ride_ref.id
 
+        # Generate new rideChat document with rideID.
+        db.collection("ride_chats").document(ride_id).set({
+            'rideId': ride_id,
+            'participants': [owner_id],
+            'lastMessage': "",
+            'from': ride_details['from'],
+            'to': ride_details['to'],
+            'owner': owner_id,
+            'ownerName': owner_name,
+            'date': ride_details['date'],
+            'departureTime': ride_details['departureTime'],
+            'lastMessageTimestamp': google.cloud.firestore.SERVER_TIMESTAMP,
+            'UsernameLastMessage': ""
+        })
+
         # Get the user document from Firestore.
         user_ref = db.collection('users').document(owner_id)
         user_doc = user_ref.get()
@@ -327,6 +337,8 @@ def api_request_ride():
         rides_joined = user_doc.get('ridesJoined')
         rides_joined.append(ride_id)
         user_doc_ref.update({'ridesJoined': rides_joined})
+
+        add_user_ride_chat(db, user_id, ride_id)
 
         start = ride_doc.get("from")
         destination = ride_doc.get("to")
@@ -576,6 +588,8 @@ def api_cancel_ride():
                     add_user_to_ride_passenger(db, user_id, ride_id, "currentPassengers")
                     return jsonify({"error": "Ride failed to cancel"}), 400
 
+                remove_participant_from_ride_chat(db, user_id, ride_id)
+
                 start = ride_doc.get("from")
                 destination = ride_doc.get("to")
                 ride_owner = ride_doc.get("ownerID")
@@ -623,6 +637,8 @@ def api_delete_ride():
         if not ride_doc.exists:
             return jsonify({"error": "Ride not found"}), 404
 
+        ride_chat_doc_ref = db.collection('ride_chats').document(ride_id)
+
         ride_data = ride_doc.to_dict()
         ride_owner_id = ride_data.get("ownerID")
         current_passengers = ride_data.get("currentPassengers", [])
@@ -651,6 +667,7 @@ def api_delete_ride():
         remove_ride_id = remove_ride_from_user(db, user_id, ride_id, "ridesPosted")
         if remove_ride_id:
             ride_doc_ref.delete()
+            ride_chat_doc_ref.delete()
             return jsonify({"message": "Ride successfully deleted"}), 201
 
         return jsonify({
@@ -792,6 +809,152 @@ def api_home():
 
     return jsonify({"message": f"Welcome {user_name}!"}), 200
 
+@app.route('/api/send-message', methods=['POST'])
+@auth_required
+def api_send_message():
+    """
+    Send a message.
+    """
+    data = request.get_json()
+    if not data:
+        return jsonify({"error": "Invalid JSON payload"}), 400
+
+    required_fields = [
+      'rideId',
+      'text'
+    ]
+
+    missing_response = check_required_fields(data, required_fields)
+    if missing_response:
+        return jsonify(missing_response[0]), missing_response[1]
+
+    user_id = get_user_id()
+    if user_id is None:
+        return jsonify({"error": "User not unauthorized"}), 401
+
+    user = session.get('user', {})
+    user_name = user.get('name', 'Guest')
+
+    try:
+        ride_id = data.get('rideId')
+        ride_chats_ref = db.collection('ride_chats').document(ride_id)
+        ride_chat_doc = ride_chats_ref.get()
+        ride_chat_data = ride_chat_doc.to_dict()
+        participants = ride_chat_data.get('participants')
+        chat_owner_id = ride_chat_data.get('owner')
+
+        time = google.cloud.firestore.SERVER_TIMESTAMP
+        ride_chats_ref.update({
+            "timestamp": time,
+            "lastMessage": data.get('text'),
+            "UsernameLastMessage": user_name
+        })
+
+        if user_id not in participants:
+            return jsonify({"error": "User is not a participant of this chat."}), 400
+
+        message_ref = ride_chats_ref.collection('messages').document()
+
+        is_owner = False
+        if user_id == chat_owner_id:
+            is_owner = True
+
+        message_data = {
+            "senderId": user_id,
+            "senderName": user_name,
+            "text": data.get('text'),
+            "timestamp": time,
+            "isOwner": is_owner
+        }
+
+        message_ref.set(message_data)
+
+        start = ride_chat_data.get('from')
+        destination = ride_chat_data.get('to')
+        notification_msg = (
+            f"{user_name} has sent a message.\n"
+            f"From: {start}\n"
+            f"To: {destination}"
+        )
+
+        for participant_id in participants:
+            if participant_id != user_id:
+                store_notification(db, participant_id, ride_id, notification_msg)
+
+        return jsonify({"message": "Message has been sent"}), 201
+
+    except Exception as e:
+        return jsonify({"error": "An unexpected error occurred", "details": str(e)}), 500
+
+@app.route('/api/get-messages/<ride_chat_id>', methods=['GET'])
+@auth_required
+def api_get_messages(ride_chat_id):
+    """
+    Fetch all messages from a rideChat.
+    """
+    user_id = get_user_id()
+    if user_id is None:
+        return jsonify({"error": "User not unauthorized"}), 401
+
+    try:
+        ride_chats_ref = db.collection('ride_chats').document(ride_chat_id)
+        ride_chat_doc = ride_chats_ref.get()
+
+        if not ride_chat_doc.exists:
+            return jsonify({"error": "Chat not found"}), 404
+
+        ride_chat_data = ride_chat_doc.to_dict()
+        participants = ride_chat_data.get('participants')
+
+        if user_id not in participants:
+            return jsonify({"error": "User is not a participant of this chat."}), 403
+
+        messages = get_sorted_messages(db, ride_chat_id)
+
+        return jsonify({"messages": messages}), 200
+
+    except Exception as e:
+        return jsonify({"error": "An unexpected error occurred", "details": str(e)}), 500
+
+@app.route('/api/check-ride-chat/<ride_chat_id>', methods=['GET'])
+@auth_required
+def api_check_ride_chat(ride_chat_id):
+    """
+    Check if a rideChat document exists.
+    """
+    ride_chat_ref = db.collection('ride_chats').document(ride_chat_id)
+    ride_chat_doc = ride_chat_ref.get()
+
+    if ride_chat_doc.exists:
+        return jsonify({"exists": True}), 200
+
+    return jsonify({"exists": False, "error": "Ride chat not found"}), 404
+
+@app.route('/api/get-all-user-ride-chats', methods=['GET'])
+@auth_required
+def api_get_all_user_ride_chats():
+    """
+    Fetch all the ride chats for the user.
+    """
+    user_id = get_user_id()
+    if user_id is None:
+        return jsonify({"error": "User not unauthorized"}), 401
+
+    try:
+        user_doc_ref = db.collection('users').document(user_id)
+        user_doc = user_doc_ref.get()
+
+        ride_joined = user_doc.get('ridesJoined')
+        ride_posted = user_doc.get('ridesPosted')
+        ride_chat_ids = ride_joined + ride_posted
+
+        chats = get_sorted_ride_chats(db, ride_chat_ids)
+
+        return jsonify({"ride_chats": chats}), 200
+
+    except Exception as e:
+        return jsonify({"error": "An unexpected error occurred.", "details": str(e)}), 500
+
 def delete_past_rides():
     """
     Deletes past rides from Firestore.
@@ -826,6 +989,7 @@ def delete_past_rides():
 
     except Exception as e:
         print(f"Error deleting past rides: {e}")
+
 
 scheduler = BackgroundScheduler()
 scheduler.add_job(delete_past_rides, "interval", minutes=5)

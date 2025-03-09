@@ -112,7 +112,7 @@ export default function Home() {
         <Text style={styles.eventItem}>Upcoming Rides</Text>
         {rides.length > 0 ? (
           rides.map((ride, index) => (
-            <Text key={index} style={styles.eventItem}>{ride.from} → {ride.to} at {ride.departureTime}</Text>
+            <Text key={index} style={styles.eventItem}>{ride.from} → {ride.to} at {new Date(ride.date).toLocaleDateString("en-US")} {ride.departureTime}</Text>
           ))
         ) : (
           <Text style={styles.eventItem}>No upcoming rides</Text>
@@ -158,8 +158,8 @@ export default function Home() {
       )}
 
       {/* Bottom Right Button */}
-      <TouchableOpacity onPress={() => handleButtonPress("messages")} style={[styles.bottomRightButton, styles.bottomRightButton]}>
-        <Text style={{ color: 'black' }}>P</Text>
+      <TouchableOpacity onPress={() => router.push("/userallridechats")} style={[styles.bottomRightButton, styles.bottomRightButton]}>
+        <Ionicons name="chatbox-outline" size={20} color="black"/>
       </TouchableOpacity>
       <View style={styles.footer}>
       </View>

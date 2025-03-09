@@ -1,5 +1,6 @@
 from datetime import datetime
 import json
+import pytz
 from google.cloud.firestore import (
     ArrayRemove, ArrayUnion
 )
@@ -218,3 +219,81 @@ def store_notification(db, ride_owner, ride_id, message):
     })
 
     user_ref.set({"unread_notification_count": firestore.Increment(1)}, merge=True)
+
+def add_user_ride_chat(db, user_id, chat_id):
+    """
+    Add a user to a ride chat.
+    """
+    ride_chats_ref = db.collection('ride_chats').document(chat_id)
+    ride_chats_ref.update({
+        "participants": ArrayUnion([user_id])
+    })
+
+def remove_participant_from_ride_chat(db, user_id, ride_id):
+    """Remove a participant from a ride chat"""
+    ride_chat_doc = db.collection("ride_chats").document(ride_id)
+    ride_chat_doc.update({
+        "participants": ArrayRemove([user_id])
+    })
+
+def get_sorted_messages(db, ride_id):
+    """
+    Fetch all messages for a ride chat, sorted by timestamp.
+    """
+    pacific_tz = pytz.timezone("America/Los_Angeles")
+
+    messages_ref = (
+        db.collection("ride_chats")
+        .document(ride_id)
+        .collection("messages")
+        .order_by("timestamp", direction=firestore.Query.ASCENDING)
+    )
+
+    messages = messages_ref.stream()
+
+    sorted_messages = {}
+    for index, doc in enumerate(messages, start=1):
+        message_data = doc.to_dict()
+        message_data["id"] = doc.id
+
+        utc_dt = message_data["timestamp"].replace(tzinfo=pytz.utc)
+        pacific_dt = utc_dt.astimezone(pacific_tz)
+
+        message_data["timestamp"] = pacific_dt.strftime("%Y-%m-%d %I:%M %p PT")
+
+        sorted_messages[index] = message_data
+
+    return sorted_messages
+
+def get_sorted_ride_chats(db, arr_ride_chat_ids):
+    """
+    Fetch ride chats, sorted by last message timestamp in descending order.
+    """
+    pacific_tz = pytz.timezone("America/Los_Angeles")
+
+    chats = []
+    for chat_id in arr_ride_chat_ids:
+        ride_chats_ref = db.collection("ride_chats").document(chat_id)
+        ride_chat_doc = ride_chats_ref.get()
+
+        if not ride_chat_doc.exists:
+            continue
+
+        ride_chat_data = ride_chat_doc.to_dict()
+        ride_chat_data["id"] = chat_id
+
+        utc_dt = ride_chat_data["lastMessageTimestamp"].replace(tzinfo=pytz.utc)
+        pacific_dt = utc_dt.astimezone(pacific_tz)
+        ride_chat_data["lastMessageTimestamp"] = pacific_dt.strftime("%Y-%m-%d %I:%M %p PT")
+
+        chats.append(ride_chat_data)
+
+    def sort_by_timestamp(chat):
+        timestamp = chat["lastMessageTimestamp"]
+        if timestamp:
+            return datetime.strptime(timestamp, "%Y-%m-%d %I:%M %p PT")
+        return datetime.min
+
+    chats.sort(key=sort_by_timestamp, reverse=True)
+
+    return chats

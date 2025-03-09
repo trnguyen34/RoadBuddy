@@ -16,6 +16,7 @@ import { Picker } from "@react-native-picker/picker";
 import axios from "axios";
 import { router } from "expo-router";
 import { BASE_URL } from "../configs/base-url";
+import { Ionicons } from "@expo/vector-icons";
 
 // Define valid options.
 const validMakes = ["BMW", "Honda", "Ford", "Mercedez", "Toyota", "Lexus"].sort();
@@ -149,10 +150,15 @@ export default function AddCar() {
 
   return (
     <View style={styles.container}>
+      <View style={[styles.headerContainer]}>
+        <TouchableOpacity style={styles.backButton} onPress={() => router.replace('/home')}>
+          <Ionicons name="arrow-back" size={24} color="#FFF" />
+        </TouchableOpacity>
+        <Text style={styles.title}>Add Car</Text>
+      </View>
       {error ? (
       <Animated.View
           style={[
-            styles.errorBox,
             { opacity: fadeAnim, transform: [{ translateY: translateYAnim }] },
           ]}
         >
@@ -383,8 +389,8 @@ export default function AddCar() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    padding: 20,
-    backgroundColor: "#fff",
+    // padding: 20,
+    backgroundColor: "#F8F3E9",
   },
   selector: {
     paddingVertical: 12,
@@ -392,10 +398,15 @@ const styles = StyleSheet.create({
     borderColor: "#ccc",
     borderWidth: 1,
     borderRadius: 8,
-    marginBottom: 12,
+    marginBottom: 22,
+    backgroundColor: '#fff',
+    boxShadow: '0px 4px 6px rgba(0, 0, 0, 0.2)',
   },
   selectorText: {
     fontSize: 16,
+  },
+  errorBox:{
+
   },
   placeholderText: {
     color: "#999",
@@ -458,11 +469,13 @@ const styles = StyleSheet.create({
     fontSize: 18,
   },
   button: {
-    backgroundColor: "#007bff",
+    backgroundColor: '#C5D1AB',
     paddingVertical: 12,
-    borderRadius: 8,
+    borderRadius: 20,
     alignItems: "center",
     marginTop: 10,
+    width: '100%',
+    boxShadow: '0px 4px 6px rgba(0, 0, 0, 0.2)',
   },
   buttonText: {
     color: "#fff",
@@ -478,5 +491,28 @@ const styles = StyleSheet.create({
     color: "green",
     marginBottom: 10,
     textAlign: "center",
+  },
+  headerContainer: {
+    backgroundColor: "#8C7B6B",
+    borderBottomLeftRadius: 50,
+    borderBottomRightRadius: 50,
+    paddingBottom: 50,
+    alignItems: "center",
+    paddingTop: 20,
+    marginTop: 0,
+    marginBottom: 70,
+  },
+  backButton: {
+    position: "absolute",
+    left: 15,
+    top: 22,
+    marginTop: 70,
+  },
+  title: {
+    fontSize: 24,
+    fontWeight: "bold",
+    color: "#F8F3E9",
+    marginTop: 70,
+    // marginBottom: 40,
   },
 });

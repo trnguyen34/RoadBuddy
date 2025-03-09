@@ -31,12 +31,14 @@ export default function RootLayout() {
           name="addcar"
           options={{
             title: "",
+            headerShown: false,
           }}
         />
         <Stack.Screen
           name="postride"
           options={{
             title: "Post Ride",
+            headerShown: false,
           }}
         />
         <Stack.Screen
@@ -60,6 +62,13 @@ export default function RootLayout() {
           options={{
             title: "Start",
             headerBackVisible: false,
+            headerShown: false,
+          }}
+        />
+        <Stack.Screen
+          name="messagingscreen"
+          options={{
+            title: "",
             headerShown: false,
           }}
         />
@@ -95,6 +104,13 @@ export default function RootLayout() {
           name="notificationscreen" 
           options={{
             title: "notificationscreen",
+            headerShown: false,
+          }}
+        />
+        <Stack.Screen 
+          name="userallridechats" 
+          options={{
+            title: "userallridechats",
             headerShown: false,
           }}
         />
