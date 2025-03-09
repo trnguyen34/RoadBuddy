@@ -31,12 +31,14 @@ export default function RootLayout() {
           name="addcar"
           options={{
             title: "",
+            headerShown: false,
           }}
         />
         <Stack.Screen
           name="postride"
           options={{
             title: "Post Ride",
+            headerShown: false,
           }}
         />
         <Stack.Screen
