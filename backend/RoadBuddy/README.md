@@ -5,7 +5,7 @@
 ### 1. Clone the repository
 ```bash
 git clone git@github.com:trnguyen34/RoadBuddy.git
-cd RoadBuddy
+cd RoadBuddy/backend/RoadBuddy
 ```
 
 ### 2. Create a python3.10 virtual environments and activate it
@@ -28,4 +28,3 @@ echo "SECRET_KEY=nasdbjwefudsvkjwefoui" > .env
 ```bash
 python3 app.py
 ```
-
