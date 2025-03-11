@@ -33,7 +33,7 @@ app.config['PERMANENT_SESSION_LIFETIME'] = timedelta(days=1)
 app.config['SESSION_REFRESH_EACH_REQUEST'] = True
 app.config['SESSION_COOKIE_SAMESITE'] = 'Lax'
 
-cred = credentials.Certificate("firebase-config.json")
+cred = credentials.Certificate("../config/firebase-config.json")
 firebase_admin.initialize_app(cred)
 db = firestore.client()
 
