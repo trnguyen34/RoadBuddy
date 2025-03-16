@@ -736,7 +736,7 @@ def api_get_all_notifications():
             notifications_list.append({
                 "id": doc.id,
                 "message": data.get("message"),
-                "read": data.get("read"),  # Keep original state in response
+                "read": data.get("read"),
                 "rideId": data.get("rideId"),
                 "createdAt": formatted_date
             })

@@ -104,55 +104,55 @@ const MessagingScreen = () => {
     }
   };
   
-return (
-  <KeyboardAvoidingView
-    behavior={Platform.OS === "ios" ? "padding" : "height"}
-    style={{ flex: 1 }}
-  >
-    <TouchableWithoutFeedback onPress={Keyboard.dismiss}>
-      <View style={styles.container}>
-        {/* Back Button */}
-        <TouchableOpacity style={styles.backButton} onPress={() => navigation.goBack()}>
-          <Ionicons name="arrow-back" size={24} color="#000" />
-        </TouchableOpacity>
-
-        <Text style={styles.header}>RoadBuddy</Text>
-
-        {/* Chat Messages */}
-        <FlatList
-          data={messages}
-          keyExtractor={(item) => item.id}
-          renderItem={({ item }) => (
-            <View style={styles.messageWrapper}>
-              {/* Only show sender name if it's NOT the current user */}
-              {item.senderId !== currentUserId && <Text style={styles.senderName}>{item.senderName}</Text>}
-          
-              <View style={[styles.messageContainer, item.senderId === currentUserId ? styles.sender : styles.receiver]}>
-                <Text style={styles.messageText}>{item.text}</Text>
-                <Text style={styles.timestamp}>{item.timestamp}</Text>
-              </View>
-            </View>
-          )}
-          contentContainerStyle={styles.chatContainer}
-        />
-
-        {/* Input Field & Send Button */}
-        <View style={styles.inputContainer}>
-          <TextInput
-            style={styles.input}
-            placeholder="Type a message..."
-            value={text}
-            placeholderTextColor="#aaa"
-            onChangeText={(newText) => setText(newText)}
-          />
-          <TouchableOpacity style={styles.sendButton} onPress={handleSendMessage}>
-            <Ionicons name="send" size={20} color="white" />
+  return (
+    <KeyboardAvoidingView
+      behavior={Platform.OS === "ios" ? "padding" : "height"}
+      style={{ flex: 1 }}
+    >
+      <TouchableWithoutFeedback onPress={Keyboard.dismiss}>
+        <View style={styles.container}>
+          {/* Back Button */}
+          <TouchableOpacity style={styles.backButton} onPress={() => navigation.goBack()}>
+            <Ionicons name="arrow-back" size={24} color="#000" />
           </TouchableOpacity>
+
+          <Text style={styles.header}>RoadBuddy</Text>
+
+          {/* Chat Messages */}
+          <FlatList
+            data={messages}
+            keyExtractor={(item) => item.id}
+            renderItem={({ item }) => (
+              <View style={styles.messageWrapper}>
+                {/* Only show sender name if it's NOT the current user */}
+                {item.senderId !== currentUserId && <Text style={styles.senderName}>{item.senderName}</Text>}
+
+                <View style={[styles.messageContainer, item.senderId === currentUserId ? styles.sender : styles.receiver]}>
+                  <Text style={styles.messageText}>{item.text}</Text>
+                  <Text style={styles.timestamp}>{item.timestamp}</Text>
+                </View>
+              </View>
+            )}
+            contentContainerStyle={styles.chatContainer}
+          />
+
+          {/* Input Field & Send Button */}
+          <View style={styles.inputContainer}>
+            <TextInput
+              style={styles.input}
+              placeholder="Type a message..."
+              value={text}
+              placeholderTextColor="#aaa"
+              onChangeText={(newText) => setText(newText)}
+            />
+            <TouchableOpacity style={styles.sendButton} onPress={handleSendMessage}>
+              <Ionicons name="send" size={20} color="white" />
+            </TouchableOpacity>
+          </View>
         </View>
-      </View>
-    </TouchableWithoutFeedback>
-  </KeyboardAvoidingView>
-);
+      </TouchableWithoutFeedback>
+    </KeyboardAvoidingView>
+  );
 };
 
 const styles = StyleSheet.create({

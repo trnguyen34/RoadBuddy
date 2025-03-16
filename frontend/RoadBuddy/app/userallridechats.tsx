@@ -95,9 +95,9 @@ const ComingUpRides = () => {
           <Ionicons name="arrow-back" size={24} color="#FFF" />
         </TouchableOpacity>
         <View style={styles.iconContainer}>
-  <Ionicons name="car-outline" size={40} color="#FFF" style={styles.carIcon} />
-  <Ionicons name="chatbubble-ellipses-outline" size={40} color="#FFF" style={styles.messageIcon} />
-</View>
+        <Ionicons name="car-outline" size={40} color="#FFF" style={styles.carIcon} />
+        <Ionicons name="chatbubble-ellipses-outline" size={40} color="#FFF" style={styles.messageIcon} />
+      </View>
         <Text style={styles.title}>Ride Chat Rooms</Text>
       </View>
 
