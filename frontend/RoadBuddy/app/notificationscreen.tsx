@@ -84,11 +84,13 @@ export default function NotificationScreen() {
             pathname: "/ridedetails",
             params: { id: item.rideId },
           });
+        } else if (response.status === 404) {
+          setError("Ride details no longer available.");
         } else {
-          setError("Ride details no longer available");
+          setError("You're not no longer a passenger of this ride.")
         }
       } catch {
-        setError("Ride details no longer available");
+        setError("Ride details no longer available.");
       }
     };
 
