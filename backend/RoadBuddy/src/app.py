@@ -477,22 +477,12 @@ def get_all_rides():
 @auth_required
 def api_get_ride_details(ride_id):
     """Fetch a ride with the given ride id"""
-    user_id = get_user_id()
-    if user_id is None:
-        return jsonify({"error": "User not unauthorized"}), 401
-
     try:
         ride_doc_ref = db.collection('rides').document(ride_id)
         ride_doc = ride_doc_ref.get()
 
         if not ride_doc.exists:
             return jsonify({"error": "Ride not found"}), 404
-
-        ride_owner = ride_doc.get('ownerID')
-        passengers = ride_doc.get('currentPassengers')
-
-        if user_id != ride_owner and user_id not in passengers:
-            return jsonify({"error": "User is not a passenger of this ride."}), 400
 
         ride_data = ride_doc.to_dict()
         ride_data["id"] = ride_id
