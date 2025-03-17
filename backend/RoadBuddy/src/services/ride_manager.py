@@ -1,4 +1,3 @@
-from flask import jsonify
 from firebase_admin.exceptions import FirebaseError
 
 class RideManager:
@@ -41,7 +40,7 @@ class RideManager:
             ride_id = ride_ref.id
 
             if self.is_duplicate_ride(rides_posted, data):
-                return jsonify({"error": "Duplicate ride post detected"}), 400
+                return {"error": "Duplicate ride post detected"}, 400
 
             ride_data = {
                 "ownerID": self.user_id,
@@ -49,31 +48,31 @@ class RideManager:
                 "from": data.get('from'),
                 "to": data.get('to'),
                 "date": data.get('date'),
-                "departureTime": data.get('departureTime'),
-                "maxPassengers": data.get('maxPassengers'),
+                "departureTime": data.get('departure_time'),
+                "maxPassengers": data.get('max_passengers'),
                 "cost": data.get('cost'),
                 "currentPassengers": [],
-                "car": data.get('car'),
-                "licensePlate": data.get('licensePlate'),
+                "car": data.get('car_select'),
+                "licensePlate": data.get('license_plate'),
                 "status": "open",
             }
 
             ride_ref.set(ride_data)
 
-            return jsonify({
+            return {
                 "message": "Ride posted successfully",
                 "ride": ride_data,
                 "rideId": ride_id
-            }), 201
+            }, 201
 
         except FirebaseError as e:
-            return jsonify({
+            return {
                 "error": "Failed to post ride, please try again.",
                 "details": str(e)
-            }), 500
+            }, 500
 
         except Exception as e:
-            return jsonify({
+            return {
                 "error": "An unexpected error occurred.",
                 "details": str(e)
-            }), 500
+            }, 500

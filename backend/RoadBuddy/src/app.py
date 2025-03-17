@@ -1,7 +1,6 @@
 from datetime import (
     timedelta, datetime
 )
-
 from functools import wraps
 import os
 import stripe
@@ -22,6 +21,10 @@ from utils import (
     get_document_from_db, store_notification, add_user_ride_chat, remove_participant_from_ride_chat,
     get_sorted_messages, get_sorted_ride_chats
 )
+from services.car_manager import CarManager
+from services.ride_chat_manager import RideChatManager
+from services.ride_manager import RideManager
+from services.user_manager import UserManager
 
 app = Flask(__name__)
 CORS(app, supports_credentials=True)
@@ -50,8 +53,16 @@ stripe_keys = {
 stripe.api_key = stripe_keys["secret_key"]
 
 def get_user_id():
-    """Retrieve user ID"""
+    """
+    Retrieve user's ID
+    """
     return session.get('user', {}).get('uid')
+
+def get_user_name():
+    """
+    Retrieve user's name
+    """
+    return session.get('user').get('name')
 
 def auth_required(f):
     """
@@ -163,50 +174,15 @@ def api_add_car():
     if missing_response:
         return jsonify(missing_response[0]), missing_response[1]
 
-    try:
-        is_primary = data.get('isPrimary')
-        if isinstance(is_primary, str):
-            is_primary = is_primary.strip().lower() == "true"
-        else:
-            is_primary = bool(is_primary)
-
-        car_details = {
-            'make': data.get('make'),
-            'model': data.get('model'),
-            'licensePlate': data.get('licensePlate'),
-            'vin': data.get('vin'),
-            'year': int(data.get('year')),
-            'color': data.get('color'),
-            'isPrimary': is_primary
-        }
-
-        user_id = session['user'].get('uid')
-        cars_ref = db.collection('users').document(user_id).collection('cars')
-
-        if is_duplicate_car(db, user_id, car_details):
-            return jsonify({"error": "Duplicate car detected"}), 400
-
-        # If the new car is marked as primary, unset any existing primary car.
-        if is_primary:
-            existing_primary_cars = cars_ref.where('isPrimary', '==', True).stream()
-            for car in existing_primary_cars:
-                cars_ref.document(car.id).update({'isPrimary': False})
-
-        cars_ref.document().set(car_details)
-
-        return jsonify({"message": "Car added successfully", "car": car_details}), 201
-    except FirebaseError as e:
-        # Return a 500 error if something went wrong with Firebase.
-        return jsonify({"error": "Failed to add car. Please try again.", "details": str(e)}), 500
-    except Exception as e:
-        # Catch-all for any other unexpected exceptions.
-        return jsonify({"error": "An unexpected error occurred.", "details": str(e)}), 500
+    user_id = get_user_id()
+    car_manager = CarManager(db, user_id)
+    return car_manager.add_car(data)
 
 @app.route('/api/post-ride', methods=['POST'])
 @auth_required
 def api_post_ride():
     """
-    Post a ride.
+    API Post a ride.
     """
     data = request.get_json()
     if not data:
@@ -214,7 +190,7 @@ def api_post_ride():
 
     required_fields = [
       'car_select',
-      'licebse_plate',
+      'license_plate',
       'from',
       'to',
       'date',
@@ -227,78 +203,28 @@ def api_post_ride():
     if missing_response:
         return jsonify(missing_response[0]), missing_response[1]
 
-    try:
-        owner_id = session['user'].get('uid')
-        owner_name = session['user'].get('name')
+    user_id = get_user_id()
+    user_name = get_user_name()
 
-        ride_details = {
-            "car": data.get('car_select'),
-            "licebsePlate": data.get('licebse_plate'),
-            "from": data.get('from'),
-            "to": data.get('to'),
-            "date": data.get('date'),
-            "departureTime": data.get('departure_time'),
-            "maxPassengers": int(data.get('max_passengers')),
-            "cost": float(data.get('cost'))
-        }
+    user_manager = UserManager(db, user_id)
+    rides_posted = user_manager.get_rides_posted()
 
-        # Generate new ride document with an auto-generated ID.
-        ride_ref = db.collection('rides').document()
-        ride_id = ride_ref.id
+    ride_manager = RideManager(db, user_id, user_name)
+    post_ride_response_data, post_ride_response_status_code = (
+        ride_manager.post_ride(rides_posted, data)
+    )
 
-        # Generate new rideChat document with rideID.
-        db.collection("ride_chats").document(ride_id).set({
-            'rideId': ride_id,
-            'participants': [owner_id],
-            'lastMessage': "",
-            'from': ride_details['from'],
-            'to': ride_details['to'],
-            'owner': owner_id,
-            'ownerName': owner_name,
-            'date': ride_details['date'],
-            'departureTime': ride_details['departureTime'],
-            'lastMessageTimestamp': google.cloud.firestore.SERVER_TIMESTAMP,
-            'UsernameLastMessage': ""
-        })
+    if post_ride_response_status_code != 201:
+        return jsonify(post_ride_response_data), post_ride_response_status_code
 
-        # Get the user document from Firestore.
-        user_ref = db.collection('users').document(owner_id)
-        user_doc = user_ref.get()
-        user_data = user_doc.to_dict() if user_doc.exists else {}
-        rides_posted = user_data.get('ridesPosted', [])
+    ride_id = post_ride_response_data.get("rideId")
 
-        if is_duplicate_ride(db, rides_posted, ride_details):
-            return jsonify({"error": "Duplicate ride post detected"}), 400
+    user_manager.add_posted_ride(ride_id)
 
-        # Create the ride data (car details can be updated later).
-        ride_data = {
-            'ownerID': owner_id,
-            'ownerName': owner_name,
-            'from': ride_details['from'],
-            'to': ride_details['to'],
-            'date': ride_details['date'],
-            'departureTime': ride_details['departureTime'],
-            'maxPassengers': ride_details['maxPassengers'],
-            'cost': ride_details['cost'],
-            'currentPassengers': [],
-            'car': ride_details['car'],
-            'licensePlate': ride_details['licebsePlate'],
-            'status': 'open',
-        }
+    ride_chat_manager = RideChatManager(db, user_id, user_name)
+    ride_chat_manager.create_ride_chat(ride_id, data)
 
-        # Save the ride data to Firestore.
-        ride_ref.set(ride_data)
-
-        # Append the new ride ID to the user's posted rides and update Firestore.
-        rides_posted.append(ride_id)
-        user_ref.update({'ridesPosted': rides_posted})
-
-        return jsonify({"message": "Ride posted successfully", "ride": ride_data}), 201
-
-    except FirebaseError as e:
-        return jsonify({"error": "Failed to post ride, please try again.", "details": str(e)}), 500
-    except Exception as e:
-        return jsonify({"error": "An unexpected error occurred.", "details": str(e)}), 500
+    return jsonify(post_ride_response_data), post_ride_response_status_code
 
 @app.route('/api/request-ride', methods=['POST'])
 @auth_required
@@ -989,7 +915,6 @@ def delete_past_rides():
 
     except Exception as e:
         print(f"Error deleting past rides: {e}")
-
 
 scheduler = BackgroundScheduler()
 scheduler.add_job(delete_past_rides, "interval", minutes=5)
