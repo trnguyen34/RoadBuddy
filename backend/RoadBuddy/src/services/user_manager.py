@@ -23,6 +23,38 @@ class UserManager:
 
         return rides_posted
 
+    def get_user_ride(self):
+        """
+        Fetches all rides that the user has joined and posted.
+        """
+        try:
+            user_doc = self.db.collection("users").document(self.user_id).get()
+
+            if not user_doc.exists:
+                return {"error": "User not found"}, 404
+
+            user_data = user_doc.to_dict()
+            rides_joined = user_data.get("ridesJoined", [])
+            rides_posted = user_data.get("ridesPosted", [])
+
+            rides = rides_joined + rides_posted
+
+            return {
+                "rides": rides
+            }, 200
+
+        except FirebaseError as e:
+            return {
+                "error": "Failed to fetch user rides.",
+                "details": str(e)
+            }, 500
+
+        except Exception as e:
+            return {
+                "error": "An unexpected error occurred",
+                "details": str(e)
+            }, 500
+
     def add_posted_ride(self, ride_id):
         """
         Add a ride to the user's "ridesPosted" list in Firestore.
@@ -90,3 +122,4 @@ class UserManager:
                 "error": "An unexpected error occurred",
                 "details": str(e)
             }, 500
+
