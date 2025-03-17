@@ -349,34 +349,30 @@ def create_payment_sheet():
 
 @app.route('/api/available-rides', methods=['GET'])
 @auth_required
-def get_all_rides():
+def get_available_rides():
     """Fetch all available rides with status 'open'."""
     user_id = get_user_id()
-    if user_id is None:
-        return jsonify({"error": "User not unauthorized"}), 401
+    user_name = get_user_name()
 
-    user_doc = get_document_from_db(db, user_id, "users")
-    if not user_doc['success']:
-        return jsonify({"error": user_doc["error"]}), user_doc["code"]
+    user_manger = UserManager(db, user_id)
+    user_ride_response_message, user_ride_response_status_code = (
+        user_manger.get_user_ride()
+    )
 
-    user_doc = user_doc["document"]
-    rides_joined = user_doc.get('ridesJoined') or []
+    if user_ride_response_status_code != 200:
+        return jsonify({"Error": "Failed to fetch rides"}), 400
 
-    try:
-        rides_ref = db.collection('rides').where('status', '==', 'open')
-        rides_docs = rides_ref.stream()
+    excluded_rides = user_ride_response_message.get("rides")
 
-        rides = []
-        for doc in rides_docs:
-            ride_data = doc.to_dict()
-            if ride_data['ownerID'] != user_id and doc.id not in rides_joined:
-                ride_data["id"] = doc.id
-                rides.append(ride_data)
+    ride_manager = RideManager(db, user_id, user_name)
+    avaiable_rides_response_message, avaiable_rides_response_status_code = (
+        ride_manager.get_avaiable_rides(excluded_rides)
+    )
 
-        return jsonify({"rides": rides}), 200
+    if avaiable_rides_response_status_code != 200:
+        return jsonify(avaiable_rides_response_message), avaiable_rides_response_status_code
 
-    except Exception as e:
-        return jsonify({"error": "Failed to fetch rides", "details": str(e)}), 500
+    return jsonify(avaiable_rides_response_message), avaiable_rides_response_status_code
 
 @app.route('/api/rides/<ride_id>', methods=['GET'])
 @auth_required
