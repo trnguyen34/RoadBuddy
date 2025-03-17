@@ -4,6 +4,7 @@ class RideManager:
     """
     RideManager is responsible for handling ride-related operation for a user.
     """
+
     def __init__(self, db, user_id, user_name):
         """
         Initialize the RideManager.
@@ -30,6 +31,33 @@ class RideManager:
                     return True
 
         return False
+
+    def get_ride(self, ride_id):
+        """
+        Fetch a ride.
+        """
+        try:
+            ride_doc = self.ride_ref.document(ride_id).get()
+
+            if not ride_doc.exists:
+                return {"error": "Ride not found"}, 404
+
+            ride_data = ride_doc.to_dict()
+            return {
+                "ride": ride_data,
+            }, 200
+
+        except FirebaseError as e:
+            return {
+                "error": "Failed to fetch ride details.",
+                "details": str(e)
+            }, 500
+
+        except Exception as e:
+            return {
+                "error": "An unexpected error occurred.",
+                "details": str(e)
+            }, 500
 
     def post_ride(self, rides_posted, data):
         """
@@ -68,6 +96,45 @@ class RideManager:
         except FirebaseError as e:
             return {
                 "error": "Failed to post ride, please try again.",
+                "details": str(e)
+            }, 500
+
+        except Exception as e:
+            return {
+                "error": "An unexpected error occurred.",
+                "details": str(e)
+            }, 500
+
+    def add_passenger(self, ride_id):
+        """
+        Add a user to the ride as a passenger.
+        """
+        try:
+            ride_doc = self.ride_ref.document(ride_id).get()
+
+            if not ride_doc.exists:
+                return {"error": "Ride not found"}, 404
+
+            ride_data = ride_doc.to_dict()
+            current_passengers = ride_data.get("currentPassengers", [])
+            max_passengers = ride_data.get("maxPassengers", 0)
+
+            if self.user_id in current_passengers:
+                return {"message": "User is already a passenger"}, 200
+
+            if len(current_passengers) >= max_passengers:
+                return {"error": "Ride is full"}, 400
+
+            current_passengers.append(self.user_id)
+            self.ride_ref.document(ride_id).update({"currentPassengers": current_passengers})
+
+            return {
+                "message": "User successfully booked this ride.",
+            }, 200
+
+        except FirebaseError as e:
+            return {
+                "error": "Failed to add user to this ride, please try again.",
                 "details": str(e)
             }, 500
 
