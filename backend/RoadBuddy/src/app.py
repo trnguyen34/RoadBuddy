@@ -23,6 +23,7 @@ from utils import (
 )
 from services.car_manager import CarManager
 from services.ride_chat_manager import RideChatManager
+from services.notification_manager import NotificationManager
 from services.ride_manager import RideManager
 from services.user_manager import UserManager
 
@@ -240,48 +241,47 @@ def api_request_ride():
       'rideId',
     ]
 
-    missing_fields = [field for field in required_fields if field not in data or not data[field]]
-    if missing_fields:
-        return jsonify({
-            "error": f'Missing required field(s): {", ".join(missing_fields)}'
-        }), 400
+    missing_response = check_required_fields(data, required_fields)
+    if missing_response:
+        return jsonify(missing_response[0]), missing_response[1]
 
-    try:
-        ride_id = data.get('rideId').strip()
-        ride_doc_ref = db.collection('rides').document(ride_id)
-        ride_doc = ride_doc_ref.get()
+    user_id = get_user_id()
+    user_name = get_user_name()
+    ride_id = data.get('rideId').strip()
 
-        user_id = session.get('user', {}).get('uid')
+    ride_manager = RideManager(db, user_id, user_name)
+    get_ride_response_data, get_ride_repsosne_status_code = (
+        ride_manager.get_ride(ride_id)
+    )
 
-        curr_passengers = ride_doc.get('currentPassengers')
+    if get_ride_repsosne_status_code != 200:
+        return jsonify(get_ride_response_data), get_ride_repsosne_status_code
 
-        curr_passengers.append(user_id)
-        ride_doc_ref.update({'currentPassengers': curr_passengers})
+    add_passenger_response_data, add_passenger_response_status_code = (
+        ride_manager.add_passenger(ride_id)
+    )
 
-        user_doc_ref = db.collection('users').document(user_id)
-        user_doc = user_doc_ref.get()
-        rides_joined = user_doc.get('ridesJoined')
-        rides_joined.append(ride_id)
-        user_doc_ref.update({'ridesJoined': rides_joined})
+    if add_passenger_response_status_code != 200:
+        return jsonify(add_passenger_response_data), add_passenger_response_status_code
 
-        add_user_ride_chat(db, user_id, ride_id)
+    user_manager = UserManager(db, user_id)
+    user_manager.add_joined_ride(ride_id)
 
-        start = ride_doc.get("from")
-        destination = ride_doc.get("to")
-        ride_owner = ride_doc.get("ownerID")
-        user_name = session.get('user', {}).get('name')
-        message = f"{user_name} has booked a ride with you.\nFrom: {start}\nTo: {destination}"
-        store_notification(db, ride_owner, ride_id, message)
+    ride_chat_manager = RideChatManager(db, user_id, user_name)
+    ride_chat_manager.add_participant(ride_id)
 
-        return jsonify({"message": "User has been added to the ride."}), 201
+    ride_data = get_ride_response_data.get("ride")
+    ride_owner_id = ride_data['ownerID']
+    message = {
+        f"{user_name} has booked a ride with you\n"
+        f"From: {ride_data['from']}\n"
+        f"To: {ride_data['to']}"
+    }
 
-    except FirebaseError as e:
-        return jsonify({
-            "error": "Failed to look up ride with the given ride ID",
-            "details": str(e)
-        }), 500
-    except Exception as e:
-        return jsonify({"error": "An unexpected error occurred.", "details": str(e)}), 500
+    notification_manager = NotificationManager(db)
+    notification_manager.store_notification(ride_owner_id, ride_id, message)
+
+    return jsonify(get_ride_response_data), get_ride_repsosne_status_code
 
 @app.route('/api/payment-sheet', methods=['POST'])
 @auth_required
