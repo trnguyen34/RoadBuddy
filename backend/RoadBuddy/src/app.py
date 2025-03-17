@@ -22,8 +22,9 @@ from utils import (
     get_sorted_messages, get_sorted_ride_chats
 )
 from services.car_manager import CarManager
-from services.ride_chat_manager import RideChatManager
 from services.notification_manager import NotificationManager
+from services.payment_manager import PaymentManager
+from services.ride_chat_manager import RideChatManager
 from services.ride_manager import RideManager
 from services.user_manager import UserManager
 
@@ -231,7 +232,7 @@ def api_post_ride():
 @auth_required
 def api_request_ride():
     """
-    Request a ride.
+    API Request a ride.
     """
     data = request.get_json()
     if not data:
@@ -303,70 +304,48 @@ def create_payment_sheet():
     if missing_response:
         return jsonify(missing_response[0]), missing_response[1]
 
-    ride_id = data.get('rideId').strip()
-
-    ride_doc = get_document_from_db(db, ride_id, "rides")
-    if not ride_doc['success']:
-        return jsonify({"error": ride_doc["error"]}), ride_doc["code"]
-
-    ride_doc = ride_doc["document"]
+    ride_id = data.get("rideId").strip()
+    refund = data.get('refund').strip().lower() == 'true'
 
     user_id = get_user_id()
-    if not user_id:
-        return jsonify({"error": "User not authenticated"}), 401
+    user_name = get_user_name()
 
-    ride_owner_id = ride_doc.get('ownerID')
-    refund = data.get('refund', '').strip().lower() == 'true'
+    ride_manager = RideManager(db, user_id, user_name)
+    get_ride_response_message, get_ride_response_status_code = (
+        ride_manager.get_ride(ride_id)
+    )
+
+    if get_ride_response_status_code != 200:
+        return jsonify(get_ride_response_message), get_ride_response_status_code
+
+    ride_data = get_ride_response_message.get("ride")
+    ride_owner_id = ride_data["ownerID"]
 
     if ride_owner_id == user_id and not refund:
         return jsonify({"error": "User cannot book its own ride."}), 400
 
-    max_passengers = ride_doc.get('maxPassengers')
-    curr_passengers = ride_doc.get('currentPassengers') or []
+    max_passengers = ride_data["maxPassengers"]
+    curr_passengers = ride_data["currentPassengers"] or []
     if len(curr_passengers) >= max_passengers and not refund:
         return jsonify({"error": "Ride is full"}), 400
+
+    amount = data.get("amount")
+    stripe_customer_id = session.get("stripe_customer_id")
 
     if user_id in curr_passengers and not refund:
         return jsonify({"error": "User already a passenger of this ride."}), 400
 
-    try:
-        amount_cents = int(float(data.get('amount')) * 100)
-    except ValueError:
-        return jsonify({"error": "Invalid amount format."}), 400
+    payment_manager = PaymentManager(user_id)
+    payment_sheet_response_message, payment_sheet_repsonse_status_code = (
+        payment_manager.create_payment_sheet(ride_id, amount, stripe_customer_id)
+    )
 
-    try:
-        stripe_customer_id = session.get('stripe_customer_id')
-        if not stripe_customer_id:
-            customer = stripe.Customer.create(
-                description=f"Customer for user {user_id} (Ride: {ride_id})",
-                metadata={'user_id': user_id}
-            )
-            stripe_customer_id = customer.id
-            session['stripe_customer_id'] = stripe_customer_id
+    if payment_sheet_repsonse_status_code != 200:
+        return jsonify(payment_sheet_response_message), payment_sheet_repsonse_status_code
 
-        ephemeral_key = stripe.EphemeralKey.create(
-            customer=stripe_customer_id,
-            stripe_version='2020-08-27'
-        )
+    session['stripe_customer_id'] = payment_sheet_response_message.get("customer")
 
-        payment_intent = stripe.PaymentIntent.create(
-            amount=amount_cents,
-            currency="usd",
-            customer=stripe_customer_id,
-            payment_method_types=["card"],
-            description="Payment for ride request"
-        )
-
-        return jsonify({
-            "paymentIntent": payment_intent.client_secret,
-            "ephemeralKey": ephemeral_key.secret,
-            "customer": stripe_customer_id
-        }), 200
-
-    except stripe.error.StripeError as e:
-        return jsonify({"error": f"Stripe error: {str(e)}"}), 400
-    except Exception as e:
-        return jsonify({"error": "An unexpected error occurred.", "details": str(e)}), 500
+    return jsonify(payment_sheet_response_message), payment_sheet_repsonse_status_code
 
 @app.route('/api/available-rides', methods=['GET'])
 @auth_required
@@ -580,7 +559,7 @@ def api_delete_ride():
         cost = ride_doc.get("cost") * 1.20
         message = (
             f"${cost:.2f} has been refunded to you.\n"
-            f"{user_name} (ride's owner) has delete his ride.\n"
+            f"{user_name} (ride owner) has delete his ride.\n"
             f"From: {start}\n"
             f"To: {destination}"
         )
