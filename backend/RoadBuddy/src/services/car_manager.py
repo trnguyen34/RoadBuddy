@@ -18,7 +18,7 @@ class CarManager:
         Add a new car to the user's collection.
         """
         try:
-            is_primary = self._normalize_boolean(data.get("isPrimary"))
+            is_primary = self.normalize_boolean(data.get("isPrimary"))
             car_details = {
                 'make': data.get('make'),
                 'model': data.get('model'),
@@ -33,7 +33,7 @@ class CarManager:
                 return jsonify({"error": "Duplicate car detected"}), 400
 
             if is_primary:
-                self._unset_existing_primary_car()
+                self.unset_existing_primary_car()
 
             self.cars_ref.document().set(car_details)
 
@@ -67,13 +67,13 @@ class CarManager:
         return any(duplicate_query)
 
     @staticmethod
-    def _normalize_boolean(value):
+    def normalize_boolean(value):
         """Convert different boolean formats to Python bool."""
         if isinstance(value, str):
             return value.strip().lower() == "true"
         return bool(value)
 
-    def _unset_existing_primary_car(self):
+    def unset_existing_primary_car(self):
         """Unset existing primary car if a new one is marked as primary."""
         existing_primary_cars = self.cars_ref.where("isPrimary", "==", True).stream()
         for car in existing_primary_cars:
