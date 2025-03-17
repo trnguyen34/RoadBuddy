@@ -126,6 +126,10 @@ class RideManager:
                 return {"error": "Ride is full"}, 400
 
             current_passengers.append(self.user_id)
+
+            if len(current_passengers) == max_passengers:
+                self.ride_ref.document(ride_id).update({"status": "closed"})
+
             self.ride_ref.document(ride_id).update({"currentPassengers": current_passengers})
 
             return {
@@ -135,6 +139,42 @@ class RideManager:
         except FirebaseError as e:
             return {
                 "error": "Failed to add user to this ride, please try again.",
+                "details": str(e)
+            }, 500
+
+        except Exception as e:
+            return {
+                "error": "An unexpected error occurred.",
+                "details": str(e)
+            }, 500
+
+    def get_avaiable_rides(self, excluded_rides):
+        """
+        Fetch all available rides with status 'open', excluding rides the user has joined or posted.
+        """
+        try:
+            available_rides_query = (
+                self.ride_ref
+                .where("status", "==", "open")
+                .stream()
+            )
+
+            available_rides = []
+            for ride_doc in available_rides_query:
+                ride_data = ride_doc.to_dict()
+                ride_id = ride_doc.id
+
+                if ride_id not in excluded_rides:
+                    ride_data["id"] = ride_id
+                    available_rides.append(ride_data)
+
+            return {
+                "rides": available_rides
+            }, 200
+
+        except FirebaseError as e:
+            return {
+                "error": "Failed to fetch all available rides.",
                 "details": str(e)
             }, 500
 
