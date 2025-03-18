@@ -1,5 +1,7 @@
 import google.cloud
 from firebase_admin.exceptions import FirebaseError
+import pytz
+from datetime import datetime
 
 class RideChatManager:
     """
@@ -85,6 +87,51 @@ class RideChatManager:
         except Exception as e:
             return {
                 "error": "An unexpected error occurred",
+                "details": str(e)
+            }, 500
+
+    def get_all_user_ride_chats(self, ride_chat_ids):
+        """
+        Fetches all ride chats for the user using a Firestore batch read.
+        """
+        pacific_tz = pytz.timezone("America/Los_Angeles")
+
+        try:
+            if not ride_chat_ids:
+                return {"ride_chats": []}, 200
+
+            ride_chat_refs = [self.ride_chat_ref.document(ride_id) for ride_id in ride_chat_ids]
+            ride_chat_docs = self.db.get_all(ride_chat_refs)
+
+            ride_chats = []
+            for chat_doc in ride_chat_docs:
+                if chat_doc.exists:
+                    chat_data = chat_doc.to_dict()
+                    chat_data["id"] = chat_doc.id
+
+                    timestamp = chat_data.get("lastMessageTimestamp")
+                    utc_dt = timestamp.astimezone(pytz.utc)
+                    pacific_dt = utc_dt.astimezone(pacific_tz)
+                    chat_data["lastMessageTimestamp"] = (
+                        pacific_dt.strftime("%Y-%m-%d %I:%M %p PT")
+                    )
+
+                    chat_data["sort_timestamp"] = timestamp
+                    ride_chats.append(chat_data)
+
+            ride_chats.sort(key=lambda x: x["sort_timestamp"], reverse=True)
+
+            return {"ride_chats": ride_chats}, 200
+
+        except FirebaseError as e:
+            return {
+                "error": "Failed to fetch user ride chats.",
+                "details": str(e)
+            }, 500
+
+        except Exception as e:
+            return {
+                "error": "An unexpected error occurred.",
                 "details": str(e)
             }, 500
 
@@ -206,7 +253,7 @@ class RideChatManager:
                 return {"error": "User is not a participant of this chat."}, 400
 
             self.ride_chat_ref.document(ride_id).update({
-                "timestamp": time,
+                "lastMessageTimestamp": time,
                 "lastMessage": text,
                 "UsernameLastMessage": self.user_name
             })

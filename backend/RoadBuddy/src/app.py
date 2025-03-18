@@ -603,8 +603,8 @@ def api_home():
     """
     Homepage when user logged in.
     """
-    user = session.get('user', {})
-    user_name = user.get('name', 'Guest')
+    user = session.get('user')
+    user_name = get_user_name()
     print_json(user)
 
     return jsonify({"message": f"Welcome {user_name}!"}), 200
@@ -722,23 +722,18 @@ def api_get_all_user_ride_chats():
     Fetch all the ride chats for the user.
     """
     user_id = get_user_id()
-    if user_id is None:
-        return jsonify({"error": "User not unauthorized"}), 401
+    user_name = get_user_name()
 
-    try:
-        user_doc_ref = db.collection('users').document(user_id)
-        user_doc = user_doc_ref.get()
+    user_manager = UserManager(db, user_id)
+    response = user_manager.get_user_ride()
+    ride_ids = response[0].get("rides")
 
-        ride_joined = user_doc.get('ridesJoined')
-        ride_posted = user_doc.get('ridesPosted')
-        ride_chat_ids = ride_joined + ride_posted
+    ride_chat_manager = RideChatManager(db,  user_id, user_name)
+    ride_chat_response_message, ride_chat_response_status_code = (
+        ride_chat_manager.get_all_user_ride_chats(ride_ids)
+    )
 
-        chats = get_sorted_ride_chats(db, ride_chat_ids)
-
-        return jsonify({"ride_chats": chats}), 200
-
-    except Exception as e:
-        return jsonify({"error": "An unexpected error occurred.", "details": str(e)}), 500
+    return jsonify(ride_chat_response_message), ride_chat_response_status_code
 
 def delete_past_rides():
     """

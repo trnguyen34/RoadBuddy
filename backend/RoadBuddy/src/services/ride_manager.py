@@ -78,7 +78,6 @@ class RideManager:
                 "rides": rides
             }, 200
 
-
         except FirebaseError as e:
             return {
                 "error": "Failed to fetch rides.",

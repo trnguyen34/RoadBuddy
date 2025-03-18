@@ -100,7 +100,6 @@ class ChatMessagesManager:
                 pacific_dt = utc_dt.astimezone(pacific_tz)
 
                 message_data["timestamp"] = pacific_dt.strftime("%Y-%m-%d %I:%M %p PT")
-
                 sorted_messages[index] = message_data
 
             return {"messages": sorted_messages}, 200
