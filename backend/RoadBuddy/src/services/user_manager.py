@@ -152,3 +152,33 @@ class UserManager:
                 "error": "An unexpected error occurred",
                 "details": str(e)
             }, 500
+
+    def remove_posted_ride(self, ride_id):
+        """
+        Remove a posted ride.
+        """
+        try:
+            user_doc = self.user_ref.get()
+            if not user_doc.exists:
+                return {"error": "User not found"}, 404
+
+            user_data = user_doc.to_dict()
+            rides_joined = user_data.get("ridesPosted", [])
+            rides_joined.remove(ride_id)
+            self.user_ref.update({"ridesPosted": rides_joined})
+
+            return {
+                "message": "Ride successfully removed from user's posted rides"
+            }, 200
+
+        except FirebaseError as e:
+            return {
+                "error": "Failed to remove ride from user's joined rides",
+                "details": str(e)
+            }, 500
+
+        except Exception as e:
+            return {
+                "error": "An unexpected error occurred",
+                "details": str(e)
+            }, 500
