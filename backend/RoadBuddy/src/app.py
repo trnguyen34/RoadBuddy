@@ -559,23 +559,14 @@ def api_get_unread_notifications_count():
     """
     Fetch the number of unread notifications.
     """
-    try:
-        user_id = get_user_id()
-        if user_id is None:
-            return jsonify({"error": "User not unauthorized"}), 401
+    user_id = get_user_id()
+    user_manager = UserManager(db, user_id)
 
-        user_ref = db.collection('users').document(user_id).get()
-        user_data = user_ref.to_dict()
-        unread_count = user_data.get("unread_notification_count", 0)
-        return jsonify({"unread_count": unread_count}), 200
+    response_message, response_status_code = (
+        user_manager.get_unread_notification_count()
+    )
 
-    except FirebaseError as e:
-        return jsonify({
-            "error": "Failed to look up number of rnread notifications",
-            "details": str(e)
-        }), 500
-    except Exception as e:
-        return jsonify({"error": "An unexpected error occurred", "details": str(e)}), 500
+    return jsonify(response_message), response_status_code
 
 @app.route('/api/get-notifications', methods=['GET'])
 def api_get_all_notifications():
@@ -583,8 +574,6 @@ def api_get_all_notifications():
     Fetch all notifications for a user.
     """
     user_id = get_user_id()
-    if user_id is None:
-        return jsonify({"error": "User not unauthorized"}), 401
 
     try:
         user_ref = db.collection('users').document(user_id)
