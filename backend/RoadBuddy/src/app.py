@@ -452,57 +452,40 @@ def api_cancel_ride():
     if missing_response:
         return jsonify(missing_response[0]), missing_response[1]
 
-    try:
-        user_id = get_user_id()
-        if user_id is None:
-            return jsonify({"error": "User not unauthorized"}), 401
+    user_id = get_user_id()
+    user_name = get_user_name()
+    ride_id = data.get("rideId")
 
-        ride_id = data.get('rideId')
+    ride_manager = RideManager(db, user_id, user_name)
+    remove_passenger_response_message, remove_passenger_response_status_code = (
+        ride_manager.remove_passenger(ride_id)
+    )
 
-        ride_doc_ref = db.collection('rides').document(ride_id)
-        ride_doc = ride_doc_ref.get()
-        if not ride_doc.exists:
-            return jsonify({"error": "Ride not found"}), 404
+    if remove_passenger_response_status_code != 200:
+        return jsonify(remove_passenger_response_message), remove_passenger_response_status_code
 
-        ride_data = ride_doc.to_dict()
-        ride_owner_id = ride_data.get("ownerID")
-        current_passengers = ride_data.get("currentPassengers", [])
+    user_manager = UserManager(db, user_id)
+    user_manager.remove_joined_ride(ride_id)
 
-        if user_id == ride_owner_id:
-            return jsonify({
-                "error": "You cannot cancel your own ride, you must delete it."
-                }), 400
+    ride_chat_mamager = RideChatManager(db, user_id, user_name)
+    ride_chat_mamager.remove_participant(ride_id)
 
-        if user_id in current_passengers:
-            remove_passengers = remove_user_from_ride_passenger(
-                db, user_id, ride_id, "currentPassengers"
-            )
-            if remove_passengers:
-                remove_ride_id = remove_ride_from_user(db, user_id, ride_id, "ridesJoined")
-                if not remove_ride_id:
-                    add_user_to_ride_passenger(db, user_id, ride_id, "currentPassengers")
-                    return jsonify({"error": "Ride failed to cancel"}), 400
+    get_ride_response = ride_manager.get_ride(ride_id)
+    ride_data = get_ride_response[0].get("ride")
 
-                remove_participant_from_ride_chat(db, user_id, ride_id)
+    ride_owner_id = ride_data.get("ownerID")
+    start = ride_data.get("from")
+    destination = ride_data.get("to")
 
-                start = ride_doc.get("from")
-                destination = ride_doc.get("to")
-                ride_owner = ride_doc.get("ownerID")
-                user_name = session.get('user', {}).get('name')
-                message = (
-                f"{user_name} has cancelled a ride with you.\n"
-                f"From: {start}\n"
-                f"To: {destination}"
-                )
-                store_notification(db, ride_owner, ride_id, message)
+    message = (
+        f"{user_name} has cancelled a ride with you.\n"
+        f"From: {start}\n"
+        f"To: {destination}"
+    )
+    notification_manager = NotificationManager(db)
+    notification_manager.store_notification(ride_owner_id, ride_id, message)
 
-                return jsonify({"message": "Ride successfully cancelled"}), 201
-            return jsonify({"error": "Ride failed to cancell"}), 400
-
-        return jsonify({"error": "User is not a passenger in this ride."}), 400
-
-    except Exception as e:
-        return jsonify({"error": "An unexpected error occurred", "details": str(e)}), 500
+    return jsonify({"message": "Ride successfully cancelled"}), 200
 
 @app.route('/api/delete-ride', methods=['POST'])
 def api_delete_ride():
