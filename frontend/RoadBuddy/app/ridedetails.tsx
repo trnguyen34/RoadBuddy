@@ -220,7 +220,7 @@ function RideDetailsScreen() {
         { rideId: id },
         { withCredentials: true }
       );
-      if (response.status === 201) {
+      if (response.status === 200) {
         Alert.alert("Success", response.data.message || "Ride cancelled successfully");
         router.replace("/cominguprides");
       } else {
@@ -323,7 +323,7 @@ function RideDetailsScreen() {
             { rideId: id },
             { withCredentials: true }
           );
-          if (response.status === 201) {
+          if (response.status === 200) {
             Alert.alert("Success", response.data.message || "Ride deleted successfully");
             router.replace("/cominguprides");
           } else {
@@ -352,7 +352,7 @@ function RideDetailsScreen() {
         { rideId: id },
         { withCredentials: true }
       );
-      if (response.status === 201) {
+      if (response.status === 200) {
         Alert.alert("Success", response.data.message || "Ride deleted successfully");
         router.replace("/cominguprides");
       } else {
