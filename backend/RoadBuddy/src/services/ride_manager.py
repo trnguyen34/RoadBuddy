@@ -59,6 +59,38 @@ class RideManager:
                 "details": str(e)
             }, 500
 
+    def get_rides_by_ids(self, ride_ids):
+        """
+        Fetch multiple rides based on a list of ride IDs.
+        """
+        try:
+            # Convert ride IDs to document references
+            ride_refs = [self.ride_ref.document(ride_id) for ride_id in ride_ids]
+            ride_docs = self.db.get_all(ride_refs)
+
+            rides = []
+            for ride_doc in ride_docs:
+                ride_data = ride_doc.to_dict()
+                ride_data["id"] = ride_doc.id
+                rides.append(ride_data)
+
+            return {
+                "rides": rides
+            }, 200
+
+
+        except FirebaseError as e:
+            return {
+                "error": "Failed to fetch rides.",
+                "details": str(e)
+            }, 500
+
+        except Exception as e:
+            return {
+                "error": "An unexpected error occurred.",
+                "details": str(e)
+            }, 500
+
     def post_ride(self, rides_posted, data):
         """
         Post a new ride.
