@@ -232,10 +232,9 @@ class RideManager:
             ride_owner_id = ride_data.get("ownerID")
 
             if self.user_id == ride_owner_id:
-                return (
-                    {"error": "User cannot remove themselves from their own ride. "
-                              "They must delete it."},
-                ), 400
+                return {
+                    "error": "User cannot remove themselves from their own ride, must delete it."
+                }, 400
 
             if self.user_id not in current_passengers:
                 return {
@@ -244,6 +243,9 @@ class RideManager:
 
             current_passengers.remove(self.user_id)
             self.ride_ref.document(ride_id).update({"currentPassengers": current_passengers})
+
+            if ride_data.get("status") == "closed":
+                self.ride_ref.document(ride_id).update({"status": "open"})
 
             return {
                 "message": "User successfully removed from the ride.",
