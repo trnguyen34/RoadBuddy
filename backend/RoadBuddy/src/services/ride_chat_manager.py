@@ -54,6 +54,40 @@ class RideChatManager:
                 "details": str(e)
             }, 500
 
+    def get_ride_chat_details(self, ride_id):
+        """
+        Fetches the ride chat details.
+        """
+        try:
+            ride_chat_doc = self.ride_chat_ref.document(ride_id).get()
+
+            if not ride_chat_doc.exists:
+                return {"error": "Chat ride not found."}, 404
+
+            ride_chat_data = ride_chat_doc.to_dict()
+            participants = ride_chat_data.get("participants")
+
+            if self.user_id not in participants:
+                return {
+                    "error": "User is not a participant of this chat."
+                }, 403
+
+            return {
+                "rideChat": ride_chat_data,
+            }, 200
+
+        except FirebaseError as e:
+            return {
+                "error": "Failed to fetch ride chat",
+                "details": str(e)
+            }, 500
+
+        except Exception as e:
+            return {
+                "error": "An unexpected error occurred",
+                "details": str(e)
+            }, 500
+
     def delete_ride_chat(self, ride_id):
         """
         Delete a ride chat room.
@@ -149,5 +183,46 @@ class RideChatManager:
         except Exception as e:
             return {
                 "error": "An unexpected error occurred",
+                "details": str(e)
+            }, 500
+
+    def update_last_message(self, ride_id, text, time):
+        """
+        Fetches the ride chat document, extracts metadata, and updates last message info.
+        """
+        try:
+            ride_chat_doc = self.ride_chat_ref.document(ride_id).get()
+
+            if not ride_chat_doc.exists:
+                return {"error": "Ride chat not found."}, 404
+
+            if not text.strip():
+                return {"error": "Message cannot be empty."}, 400
+
+            ride_chat_data = ride_chat_doc.to_dict()
+            participants = ride_chat_data.get("participants", [])
+
+            if self.user_id not in participants:
+                return {"error": "User is not a participant of this chat."}, 400
+
+            self.ride_chat_ref.document(ride_id).update({
+                "timestamp": time,
+                "lastMessage": text,
+                "UsernameLastMessage": self.user_name
+            })
+
+            return {
+                "rideChat": ride_chat_data,
+            }, 200
+
+        except FirebaseError as e:
+            return {
+                "error": "Failed to update ride chat.",
+                "details": str(e)
+            }, 500
+
+        except Exception as e:
+            return {
+                "error": "An unexpected error occurred.",
                 "details": str(e)
             }, 500
