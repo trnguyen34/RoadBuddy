@@ -137,6 +137,43 @@ class RideManager:
                 "details": str(e)
             }, 500
 
+    def delete_ride(self, ride_id):
+        """
+        Delete a new ride.
+        """
+        try:
+            ride_doc = self.ride_ref.document(ride_id).get()
+
+            if not ride_doc.exists:
+                return {"error": "Ride not found"}, 404
+
+            ride_data = ride_doc.to_dict()
+            ride_owner_id = ride_data.get("ownerID")
+
+            if self.user_id != ride_owner_id:
+                return {
+                    "error": "Only the owner of this ride can delete it."
+                }, 400
+
+            self.ride_ref.document(ride_id).delete()
+
+            return {
+                "message": "Ride successfully deleted",
+                "deletedRide": ride_data
+            }, 200
+
+        except FirebaseError as e:
+            return {
+                "error": "Failed to delete ride. Please try again.",
+                "details": str(e)
+            }, 500
+
+        except Exception as e:
+            return {
+                "error": "An unexpected error occurred.",
+                "details": str(e)
+            }, 500
+
     def add_passenger(self, ride_id):
         """
         Add a user to the ride as a passenger.
