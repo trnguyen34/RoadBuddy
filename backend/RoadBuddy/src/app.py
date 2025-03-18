@@ -586,41 +586,16 @@ def api_get_all_notifications():
 @auth_required
 def api_get_cars():
     """
-    Fetch all all cars were added.
+    Fetches all cars associated with the user.
     """
-    try:
-        user_id = get_user_id()
-        if user_id is None:
-            return jsonify({"error": "User not unauthorized"}), 401
+    user_id = get_user_id()
 
-        user_ref = db.collection('users').document(user_id)
-        car_ref = user_ref.collection('cars')
-        cars_docs = car_ref.stream()
+    car_manager = CarManager(db, user_id)
+    response_message, response_status_code = (
+        car_manager.get_cars_for_user()
+    )
 
-        cars = []
-        for doc in cars_docs:
-            car_data = doc.to_dict()
-            cars.append({
-                "year": car_data.get("year", ""),
-                "make": car_data.get("make", "").strip(),
-                "model": car_data.get("model", "").strip(),
-                "color": car_data.get("color", ""),
-                "licensePlate": car_data.get("licensePlate", "")
-            })
-
-        if cars:
-            return jsonify({"cars": cars}), 200
-
-        return jsonify({"error": "No car have been added."}), 204
-
-    except FirebaseError as e:
-        return jsonify({
-            "error": "Failed to fetech added cars.",
-            "details": str(e)
-        }), 500
-
-    except Exception as e:
-        return jsonify({"error": "Failed to fetch ride details", "details": str(e)}), 500
+    return jsonify(response_message), response_status_code
 
 @app.route('/api/home', methods=['GET'])
 @auth_required
