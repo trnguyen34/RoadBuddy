@@ -56,7 +56,7 @@ class RideChatManager:
 
     def add_participant(self, ride_id):
         """
-        Add a user to a ride chat.
+        Add a user to the ride chat.
         """
         try:
             chat_room_doc = self.ride_chat_ref.document(ride_id).get()
@@ -68,7 +68,9 @@ class RideChatManager:
             participants = chat_data.get("participants", [])
 
             if self.user_id in participants:
-                return {"message": "User is already a participant of this ride chat."}, 200
+                return {
+                    "message": "User is already a participant of this ride chat."
+                }, 200
 
             participants.append(self.user_id)
             self.ride_chat_ref.document(ride_id).update({"participants": participants})
@@ -80,6 +82,42 @@ class RideChatManager:
         except FirebaseError as e:
             return {
                 "error": "Failed to add user as a participant of this chat.",
+                "details": str(e)
+            }, 500
+
+        except Exception as e:
+            return {
+                "error": "An unexpected error occurred",
+                "details": str(e)
+            }, 500
+
+    def remove_participant(self, ride_id):
+        """
+        Remove a user from the ride chat
+        """
+        try:
+            chat_room_doc = self.ride_chat_ref.document(ride_id).get()
+            if not chat_room_doc.exists:
+                return {"error": "Chat ride not found."}, 404
+
+            chat_data = chat_room_doc.to_dict()
+            participants = chat_data.get("participants", [])
+
+            if self.user_id not in participants:
+                return {
+                    "message": "User is not a particpant of this ride chat."
+                }, 400
+
+            participants.remove(ride_id)
+            self.ride_chat_ref.document(ride_id).update({"participants": participants})
+
+            return {
+                "message": "User successfully removed as a participant of this chat.",
+            }, 200
+
+        except FirebaseError as e:
+            return {
+                "error": "Failed to remove user as a participant of this chat.",
                 "details": str(e)
             }, 500
 
