@@ -574,53 +574,13 @@ def api_get_all_notifications():
     Fetch all notifications for a user.
     """
     user_id = get_user_id()
+    notification_manager = NotificationManager(db)
 
-    try:
-        user_ref = db.collection('users').document(user_id)
-        notifications_ref = user_ref.collection('notifications')
-        notifications = (
-            notifications_ref
-            .order_by("createdAt", direction=google.cloud.firestore.Query.DESCENDING)
-            .stream()
-        )
+    response_message, response_status_code = (
+        notification_manager.get_all_notifications_for_user(user_id)
+    )
 
-        notifications_list = []
-        batch = db.batch()
-
-        pacific_tz = pytz.timezone("America/Los_Angeles")
-
-        for doc in notifications:
-            data = doc.to_dict()
-
-            created_at = data.get("createdAt")
-            utc_dt = datetime.utcfromtimestamp(created_at.timestamp()).replace(tzinfo=pytz.utc)
-            pacific_dt = utc_dt.astimezone(pacific_tz)
-            formatted_date = pacific_dt.strftime("%m-%d-%Y %I:%M %p PT")
-
-            notifications_list.append({
-                "id": doc.id,
-                "message": data.get("message"),
-                "read": data.get("read"),  # Keep original state in response
-                "rideId": data.get("rideId"),
-                "createdAt": formatted_date
-            })
-
-            if not data.get("read", False):
-                batch.update(doc.reference, {"read": True})
-
-        batch.commit()
-
-        user_ref.update({"unread_notification_count": 0})
-
-        return jsonify({"notifications": notifications_list}), 200
-
-    except FirebaseError as e:
-        return jsonify({
-            "error": "Failed to look up number of rnread notifications",
-            "details": str(e)
-        }), 500
-    except Exception as e:
-        return jsonify({"error": "An unexpected error occurred", "details": str(e)}), 500
+    return jsonify(response_message), response_status_code
 
 @app.route('/api/get-cars', methods=['GET'])
 @auth_required
