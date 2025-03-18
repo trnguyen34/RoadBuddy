@@ -182,3 +182,32 @@ class UserManager:
                 "error": "An unexpected error occurred",
                 "details": str(e)
             }, 500
+
+    def get_unread_notification_count(self):
+        """
+        Fetch the number of unread notification count
+        """
+        try:
+            user_doc = self.db.collection("users").document(self.user_id).get()
+
+            if not user_doc.exists:
+                return {"error": "User not found"}, 404
+
+            user_data = user_doc.to_dict()
+            unread_count = user_data.get("unread_notification_count")
+
+            return {
+                "unread_count": unread_count
+            }, 200
+
+        except FirebaseError as e:
+            return {
+                "error": "Failed to look up number of unread notifications",
+                "details": str(e)
+            }, 500
+
+        except Exception as e:
+            return {
+                "error": "An unexpected error occurred",
+                "details": str(e)
+            }, 500
