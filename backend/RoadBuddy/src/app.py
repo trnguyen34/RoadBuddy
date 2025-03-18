@@ -703,13 +703,17 @@ def api_check_ride_chat(ride_chat_id):
     """
     Check if a rideChat document exists.
     """
-    ride_chat_ref = db.collection('ride_chats').document(ride_chat_id)
-    ride_chat_doc = ride_chat_ref.get()
+    user_id = get_user_id()
+    user_name = get_user_name()
 
-    if ride_chat_doc.exists:
-        return jsonify({"exists": True}), 200
+    ride_chat_manager = RideChatManager(db, user_id, user_name)
+    ride_chat_response = ride_chat_manager.get_ride_chat_details(ride_chat_id)
+    response_status_code = ride_chat_response[1]
 
-    return jsonify({"exists": False, "error": "Ride chat not found"}), 404
+    if response_status_code != 200:
+        return jsonify({"exists": False, "error": "Ride chat not found"}), 404
+
+    return jsonify({"exists": True}), 200
 
 @app.route('/api/get-all-user-ride-chats', methods=['GET'])
 @auth_required
