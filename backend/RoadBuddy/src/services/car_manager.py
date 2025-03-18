@@ -66,6 +66,45 @@ class CarManager:
         )
         return any(duplicate_query)
 
+    def get_cars_for_user(self):
+        """
+        Fetches all cars associated with the user.
+        """
+        try:
+            cars_docs = self.cars_ref.stream()
+
+            cars = []
+            for car in cars_docs:
+                car_data = car.to_dict()
+                cars.append({
+                "year": car_data.get("year"),
+                "make": car_data.get("make"),
+                "model": car_data.get("model"),
+                "color": car_data.get("color"),
+                "licensePlate": car_data.get("licensePlate")
+            })
+
+            if not cars:
+                return {
+                    "error": "No car have been added."
+                }, 204
+
+            return {
+                "cars": cars
+            }, 200
+
+        except FirebaseError as e:
+            return jsonify({
+                "error": "Failed to fetch added cars. Please try again.",
+                "details": str(e)
+            }), 500
+
+        except Exception as e:
+            return jsonify({
+                "error": "An unexpected error occurred.",
+                "details": str(e)
+            }), 500
+
     @staticmethod
     def normalize_boolean(value):
         """Convert different boolean formats to Python bool."""
