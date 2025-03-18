@@ -378,55 +378,49 @@ def get_available_rides():
 @auth_required
 def api_get_ride_details(ride_id):
     """Fetch a ride with the given ride id"""
-    try:
-        ride_doc_ref = db.collection('rides').document(ride_id)
-        ride_doc = ride_doc_ref.get()
-        if not ride_doc.exists:
-            return jsonify({"error": "Ride not found"}), 404
+    user_id = get_user_id()
+    user_name = get_user_name()
 
-        ride_data = ride_doc.to_dict()
-        ride_data["id"] = ride_id
-        return jsonify({"ride": ride_data}), 200
+    ride_manager = RideManager(db, user_id, user_name)
+    get_ride_response_message, get_ride_response_status_code = (
+        ride_manager.get_ride(ride_id)
+    )
 
-    except Exception as e:
-        return jsonify({"error": "Failed to fetch ride details", "details": str(e)}), 500
+    if get_ride_response_status_code != 200:
+        return jsonify(get_ride_response_message), get_ride_response_status_code
+
+    ride_data = get_ride_response_message.get("ride")
+    ride_data["id"] = ride_id
+
+    return jsonify({"ride": ride_data}), 200
 
 @app.route('/api/coming-up-rides', methods=['GET'])
 @auth_required
 def api_get_coming_up_rides():
     """Fetch all the user coming up rides"""
     user_id = get_user_id()
+    user_name = get_user_name()
 
-    try:
-        user_doc = get_document_from_db(db, user_id, "users")
-        if not user_doc['success']:
-            return jsonify({"error": user_doc["error"]}), user_doc["code"]
+    user_manager = UserManager(db, user_id)
+    user_ride_response_message, user_ride_response_status_code = (
+        user_manager.get_user_ride()
+    )
 
-        user_doc = user_doc["document"]
+    if user_ride_response_status_code != 200:
+        return jsonify(user_ride_response_message), user_ride_response_status_code
 
-        rides_joined = user_doc.get('ridesJoined')
-        rides_posted = user_doc.get('ridesPosted')
-        all_rides = (rides_joined or []) + (rides_posted or [])
+    user_rides = user_ride_response_message.get("rides")
 
-        rides = []
-        for ride_id in all_rides:
-            ride_doc = get_document_from_db(db, ride_id, "rides")
-            if not ride_doc['success']:
-                continue
+    ride_manager = RideManager(db, user_id, user_name)
 
-            ride_data = ride_doc["document"]
-            ride_data["id"] = ride_id
-            rides.append(ride_data)
+    rides_by_ids_response_message, rides_by_ids_response_status_code = (
+        ride_manager.get_rides_by_ids(user_rides)
+    )
 
-        return jsonify({"rides": rides}), 200
+    if rides_by_ids_response_status_code != 200:
+        return jsonify(rides_by_ids_response_message), rides_by_ids_response_status_code
 
-    except FirebaseError as e:
-        return jsonify({
-            "error": "Failed to fetech coming up rides.",
-            "details": str(e)
-        }), 500
-    except Exception as e:
-        return jsonify({"error": "An unexpected error occurred.", "details": str(e)}), 500
+    return jsonify(rides_by_ids_response_message), rides_by_ids_response_status_code
 
 @app.route('/api/user-id', methods=['GET'])
 @auth_required
