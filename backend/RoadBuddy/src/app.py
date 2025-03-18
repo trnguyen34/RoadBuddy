@@ -22,6 +22,7 @@ from utils import (
     get_sorted_messages, get_sorted_ride_chats
 )
 from services.car_manager import CarManager
+from services.chat_messages_manager import ChatMessagesManager
 from services.notification_manager import NotificationManager
 from services.payment_manager import PaymentManager
 from services.ride_chat_manager import RideChatManager
@@ -504,56 +505,53 @@ def api_delete_ride():
     if missing_response:
         return jsonify(missing_response[0]), missing_response[1]
 
+    ride_id = data.get("rideId")
     user_id = get_user_id()
-    if user_id is None:
-        return jsonify({"error": "User not unauthorized"}), 401
+    user_name = get_user_name()
 
-    try:
-        ride_id = data.get('rideId')
-        ride_doc_ref = db.collection('rides').document(ride_id)
-        ride_doc = ride_doc_ref.get()
-        if not ride_doc.exists:
-            return jsonify({"error": "Ride not found"}), 404
+    ride_manager = RideManager(db, user_id, user_name)
+    delete_ride_response_message, delete_ride_response_status_code = (
+        ride_manager.delete_ride(ride_id)
+    )
 
-        ride_chat_doc_ref = db.collection('ride_chats').document(ride_id)
+    if delete_ride_response_status_code != 200:
+        return jsonify(delete_ride_response_message), delete_ride_response_status_code
 
-        ride_data = ride_doc.to_dict()
-        ride_owner_id = ride_data.get("ownerID")
-        current_passengers = ride_data.get("currentPassengers", [])
+    user_manager = UserManager(db, user_id)
+    user_manager.remove_posted_ride(ride_id)
 
-        if user_id != ride_owner_id:
-            return jsonify({
-                "error": "Only the owner of this ride can delete it."
-                }), 400
+    deleted_ride_data = delete_ride_response_message.get("deletedRide")
+    passengers = deleted_ride_data.get("currentPassengers")
 
-        start = ride_doc.get("from")
-        destination = ride_doc.get("to")
-        user_name = session.get('user', {}).get('name')
-        cost = ride_doc.get("cost") * 1.20
-        message = (
-            f"${cost:.2f} has been refunded to you.\n"
-            f"{user_name} (ride owner) has delete his ride.\n"
-            f"From: {start}\n"
-            f"To: {destination}"
-        )
+    for passenger in passengers:
+        user_manager = UserManager(db, passenger)
+        user_manager.remove_joined_ride(ride_id)
 
-        for passenger_id in current_passengers:
-            remove_user_from_ride_passenger(db, passenger_id, ride_id, "currentPassengers")
-            remove_ride_from_user(db, passenger_id, ride_id, "ridesJoined")
-            store_notification(db, passenger_id, ride_id, message)
+    chat_messages_manager = ChatMessagesManager(db, ride_id, user_id, user_name)
+    chat_messages_manager.delete_all_messages()
 
-        remove_ride_id = remove_ride_from_user(db, user_id, ride_id, "ridesPosted")
-        if remove_ride_id:
-            ride_doc_ref.delete()
-            ride_chat_doc_ref.delete()
-            return jsonify({"message": "Ride successfully deleted"}), 201
+    ride_chat_manager = RideChatManager(db, user_id, user_name)
+    response_message, response_status = ride_chat_manager.delete_ride_chat(ride_id)
+    if response_status != 200:
+        print(response_message.get("details"))
 
-        return jsonify({
-            "error": "All passengers have been removed but ride failed to delete."
-        }), 400
+    start = deleted_ride_data.get("from")
+    destination = deleted_ride_data.get("to")
+    date = deleted_ride_data.get("date")
+    cost = deleted_ride_data.get("cost") * 1.20
 
-    except Exception as e:
-        return jsonify({"error": "An unexpected error occurred", "details": str(e)}), 500
+    message = (
+        f"${cost:.2f} has been refunded to you.\n"
+        f"{user_name} (ride's owner) has delete this ride.\n"
+        f"From: {start}\n"
+        f"To: {destination}\n"
+        f"To: {date}"
+    )
+
+    notification_manager = NotificationManager(db)
+    notification_manager.store_notification_for_users(passengers, ride_id, message)
+
+    return jsonify(delete_ride_response_message), delete_ride_response_status_code
 
 @app.route('/api/unread-notifications-count', methods=['GET'])
 @auth_required
