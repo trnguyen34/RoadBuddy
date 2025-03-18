@@ -54,6 +54,30 @@ class RideChatManager:
                 "details": str(e)
             }, 500
 
+    def delete_ride_chat(self, ride_id):
+        """
+        Delete a ride chat room.
+        """
+        try:
+            chat_room_doc = self.ride_chat_ref.document(ride_id)
+            chat_room_doc.delete()
+
+            return {
+                "message": "Ride chat successfully deleted."
+            }, 200
+
+        except FirebaseError as e:
+            return {
+                "error": "Failed to create chat",
+                "details": str(e)
+            }, 500
+
+        except Exception as e:
+            return {
+                "error": "An unexpected error occurred",
+                "details": str(e)
+            }, 500
+
     def add_participant(self, ride_id):
         """
         Add a user to the ride chat.
@@ -97,6 +121,7 @@ class RideChatManager:
         """
         try:
             chat_room_doc = self.ride_chat_ref.document(ride_id).get()
+
             if not chat_room_doc.exists:
                 return {"error": "Chat ride not found."}, 404
 
