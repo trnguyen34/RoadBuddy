@@ -628,63 +628,50 @@ def api_send_message():
     if missing_response:
         return jsonify(missing_response[0]), missing_response[1]
 
+    ride_id = data.get("rideId")
+    text = data.get("text").strip()
+
     user_id = get_user_id()
-    if user_id is None:
-        return jsonify({"error": "User not unauthorized"}), 401
+    user_name = get_user_name()
+    timestamp = google.cloud.firestore.SERVER_TIMESTAMP
 
-    user = session.get('user', {})
-    user_name = user.get('name', 'Guest')
+    ride_chat_manager = RideChatManager(db, user_id, user_name)
+    ride_chat_response_message, ride_chat_response_status_code = (
+        ride_chat_manager.update_last_message(ride_id, text, timestamp)
+    )
 
-    try:
-        ride_id = data.get('rideId')
-        ride_chats_ref = db.collection('ride_chats').document(ride_id)
-        ride_chat_doc = ride_chats_ref.get()
-        ride_chat_data = ride_chat_doc.to_dict()
-        participants = ride_chat_data.get('participants')
-        chat_owner_id = ride_chat_data.get('owner')
+    if ride_chat_response_status_code != 200:
+        return jsonify(ride_chat_response_message), ride_chat_response_status_code
 
-        time = google.cloud.firestore.SERVER_TIMESTAMP
-        ride_chats_ref.update({
-            "timestamp": time,
-            "lastMessage": data.get('text'),
-            "UsernameLastMessage": user_name
-        })
+    ride_chat_details = ride_chat_response_message.get("rideChat")
+    owner_id = ride_chat_details.get("owner")
+    is_owner = user_id == owner_id
 
-        if user_id not in participants:
-            return jsonify({"error": "User is not a participant of this chat."}), 400
+    chat_message_manager = ChatMessagesManager(db, ride_id, user_id, user_name)
+    chat_message_response_message, chat_message_status_code = (
+        chat_message_manager.send_message(text, timestamp, is_owner)
+    )
 
-        message_ref = ride_chats_ref.collection('messages').document()
+    if chat_message_status_code != 201:
+        print(chat_message_response_message)
+        return jsonify(chat_message_response_message), chat_message_status_code
 
-        is_owner = False
-        if user_id == chat_owner_id:
-            is_owner = True
+    participants = ride_chat_details.get("participants", [])
+    participants = [p for p in participants if p != user_id]
 
-        message_data = {
-            "senderId": user_id,
-            "senderName": user_name,
-            "text": data.get('text'),
-            "timestamp": time,
-            "isOwner": is_owner
-        }
+    start = ride_chat_details.get('from')
+    destination = ride_chat_details.get('to')
+    notification_message = (
+        f"{user_name} has sent a message.\n"
+        f"From: {start}\n"
+        f"To: {destination}"
+    )
 
-        message_ref.set(message_data)
+    print(participants)
+    notification_manager = NotificationManager(db)
+    notification_manager.store_notification_for_users(participants, ride_id, notification_message)
 
-        start = ride_chat_data.get('from')
-        destination = ride_chat_data.get('to')
-        notification_msg = (
-            f"{user_name} has sent a message.\n"
-            f"From: {start}\n"
-            f"To: {destination}"
-        )
-
-        for participant_id in participants:
-            if participant_id != user_id:
-                store_notification(db, participant_id, ride_id, notification_msg)
-
-        return jsonify({"message": "Message has been sent"}), 201
-
-    except Exception as e:
-        return jsonify({"error": "An unexpected error occurred", "details": str(e)}), 500
+    return jsonify(chat_message_response_message), chat_message_status_code
 
 @app.route('/api/get-messages/<ride_chat_id>', methods=['GET'])
 @auth_required
@@ -693,28 +680,22 @@ def api_get_messages(ride_chat_id):
     Fetch all messages from a rideChat.
     """
     user_id = get_user_id()
-    if user_id is None:
-        return jsonify({"error": "User not unauthorized"}), 401
+    user_name = get_user_name()
 
-    try:
-        ride_chats_ref = db.collection('ride_chats').document(ride_chat_id)
-        ride_chat_doc = ride_chats_ref.get()
+    ride_chat_manager = RideChatManager(db, user_id, user_name)
+    ride_chat_response_message, ride_chat_response_status_code = (
+        ride_chat_manager.get_ride_chat_details(ride_chat_id)
+    )
 
-        if not ride_chat_doc.exists:
-            return jsonify({"error": "Chat not found"}), 404
+    if ride_chat_response_status_code != 200:
+        return jsonify(ride_chat_response_message), ride_chat_response_status_code
 
-        ride_chat_data = ride_chat_doc.to_dict()
-        participants = ride_chat_data.get('participants')
+    chat_message_manager = ChatMessagesManager(db, ride_chat_id, user_id, user_name)
+    chat_message_response_message, chat_message_response_status_code = (
+        chat_message_manager.get_messages_sorted_by_timestamp_asc()
+    )
 
-        if user_id not in participants:
-            return jsonify({"error": "User is not a participant of this chat."}), 403
-
-        messages = get_sorted_messages(db, ride_chat_id)
-
-        return jsonify({"messages": messages}), 200
-
-    except Exception as e:
-        return jsonify({"error": "An unexpected error occurred", "details": str(e)}), 500
+    return jsonify(chat_message_response_message), chat_message_response_status_code
 
 @app.route('/api/check-ride-chat/<ride_chat_id>', methods=['GET'])
 @auth_required
