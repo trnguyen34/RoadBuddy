@@ -1,3 +1,8 @@
+
+from datetime import datetime
+
+import google.cloud
+import pytz
 from firebase_admin.exceptions import FirebaseError
 from google.cloud import firestore
 
@@ -80,6 +85,63 @@ class NotificationManager:
         except FirebaseError as e:
             return {
                 "error": "Failed to store notification",
+                "details": str(e)
+            }, 500
+
+        except Exception as e:
+            return {
+                "error": "An unexpected error occurred",
+                "details": str(e)
+            }, 500
+
+    def get_all_notifications_for_user(self, user_id):
+        """
+        Fetches all notifications for a user, marks them as read, and resets the unread count.
+        """
+        try:
+            user_ref = self.users_ref.document(user_id)
+            notifications_ref = user_ref.collection("notifications")
+
+            notifications = (
+                notifications_ref
+                .order_by("createdAt", direction=google.cloud.firestore.Query.DESCENDING)
+                .stream()
+            )
+
+            pacific_tz = pytz.timezone("America/Los_Angeles")
+            notifications_list = []
+            batch = self.db.batch()
+
+            for notification in notifications:
+                data = notification.to_dict()
+
+                created_at = data.get("createdAt")
+                utc_dt = (
+                    datetime.utcfromtimestamp(created_at.timestamp()).replace(tzinfo=pytz.utc)
+                )
+                pacific_dt = utc_dt.astimezone(pacific_tz)
+                formatted_date = pacific_dt.strftime("%m-%d-%Y %I:%M %p PT")
+
+                notifications_list.append({
+                    "id": notification.id,
+                    "message": data.get("message"),
+                    "read": data.get("read"),
+                    "rideId": data.get("rideId"),
+                    "createdAt": formatted_date
+                })
+
+                if not data.get("read", False):
+                    batch.update(notification.reference, {"read": True})
+
+            batch.commit()
+
+            user_ref.update({"unread_notification_count": 0})
+
+            return {"notifications": notifications_list}, 200
+
+        except FirebaseError as e:
+            return {
+                "error": "Failed to fetch user notifications.",
                 "details": str(e)
             }, 500
 
