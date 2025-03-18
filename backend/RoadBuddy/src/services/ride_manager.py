@@ -180,6 +180,50 @@ class RideManager:
                 "details": str(e)
             }, 500
 
+    def remove_passenger(self, ride_id):
+        """
+        Remove a passenger from a ride.
+        """
+        try:
+            ride_doc = self.ride_ref.document(ride_id).get()
+
+            if not ride_doc.exists:
+                return {"error": "Ride not found"}, 404
+
+            ride_data = ride_doc.to_dict()
+            current_passengers = ride_data.get("currentPassengers", [])
+            ride_owner_id = ride_data.get("ownerID")
+
+            if self.user_id == ride_owner_id:
+                return (
+                    {"error": "User cannot remove themselves from their own ride. "
+                              "They must delete it."},
+                ), 400
+
+            if self.user_id not in current_passengers:
+                return {
+                    "error": "User is not a passenger of the ride."
+                }, 400
+
+            current_passengers.remove(self.user_id)
+            self.ride_ref.document(ride_id).update({"currentPassengers": current_passengers})
+
+            return {
+                "message": "User successfully removed from the ride.",
+            }, 200
+
+        except FirebaseError as e:
+            return {
+                "error": "Failed to remove user from this ride, please try again.",
+                "details": str(e)
+            }, 500
+
+        except Exception as e:
+            return {
+                "error": "An unexpected error occurred.",
+                "details": str(e)
+            }, 500
+
     def get_avaiable_rides(self, excluded_rides):
         """
         Fetch all available rides with status 'open', excluding rides the user has joined or posted.
