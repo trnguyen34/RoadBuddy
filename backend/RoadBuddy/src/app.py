@@ -745,41 +745,41 @@ def api_get_all_user_ride_chats():
 
     return jsonify(ride_chat_response_message), ride_chat_response_status_code
 
-# def delete_past_rides():
-#     """
-#     Deletes past rides from Firestore.
-#     """
-#     print("Checking for past rides...")
+def delete_past_rides():
+    """
+    Deletes past rides from Firestore.
+    """
+    print("Checking for past rides...")
 
-#     ride_manager = RideManager(db, None, None)
-#     response = ride_manager.delete_past_rides()
+    ride_manager = RideManager(db, None, None)
+    response = ride_manager.delete_past_rides()
 
-#     deleted_rides = response[0].get("deletedRides")
+    deleted_rides = response[0].get("deletedRides")
 
-#     for ride in deleted_rides:
-#         ride_id = ride.get("id")
-#         owner_id = ride.get("ownerID")
-#         owner_name = ride.get("ownerName")
-#         passenger_ids = ride.get("currentPassengers")
+    for ride in deleted_rides:
+        ride_id = ride.get("id")
+        owner_id = ride.get("ownerID")
+        owner_name = ride.get("ownerName")
+        passenger_ids = ride.get("currentPassengers")
 
-#         print("Deleting ", ride_id)
+        print("Deleting ", ride_id)
 
-#         owner_user_manager = UserManager(db, owner_id)
-#         owner_user_manager.remove_posted_ride(ride_id)
+        owner_user_manager = UserManager(db, owner_id)
+        owner_user_manager.remove_posted_ride(ride_id)
 
-#         for passenger_id in passenger_ids:
-#             passenger_user_manager = UserManager(db, passenger_id)
-#             passenger_user_manager.remove_joined_ride(ride_id)
+        for passenger_id in passenger_ids:
+            passenger_user_manager = UserManager(db, passenger_id)
+            passenger_user_manager.remove_joined_ride(ride_id)
 
-#         chat_message_manager = ChatMessagesManager(db, ride_id, owner_id, owner_name)
-#         chat_message_manager.delete_all_messages()
+        chat_message_manager = ChatMessagesManager(db, ride_id, owner_id, owner_name)
+        chat_message_manager.delete_all_messages()
 
-#         ride_chat_manager = RideChatManager(db, owner_id, owner_name)
-#         ride_chat_manager.delete_ride_chat(ride_id)
+        ride_chat_manager = RideChatManager(db, owner_id, owner_name)
+        ride_chat_manager.delete_ride_chat(ride_id)
 
-# scheduler = BackgroundScheduler()
-# scheduler.add_job(delete_past_rides, "interval", minutes=10)
-# scheduler.start()
+scheduler = BackgroundScheduler()
+scheduler.add_job(delete_past_rides, "interval", minutes=10)
+scheduler.start()
 
 if __name__ == "__main__":
     app.run(host='0.0.0.0', port=8090, debug=True, threaded=True)
