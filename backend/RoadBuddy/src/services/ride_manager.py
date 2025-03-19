@@ -1,3 +1,5 @@
+import pytz
+from datetime import datetime
 from firebase_admin.exceptions import FirebaseError
 
 class RideManager:
@@ -138,7 +140,7 @@ class RideManager:
 
     def delete_ride(self, ride_id):
         """
-        Delete a new ride.
+        Delete a ride.
         """
         try:
             ride_doc = self.ride_ref.document(ride_id).get()
@@ -289,6 +291,59 @@ class RideManager:
         except FirebaseError as e:
             return {
                 "error": "Failed to fetch all available rides.",
+                "details": str(e)
+            }, 500
+
+        except Exception as e:
+            return {
+                "error": "An unexpected error occurred.",
+                "details": str(e)
+            }, 500
+
+    def delete_past_rides(self):
+        """
+        Deletes all rides that have already passed based on the date and time.
+        """
+        pacific_zone = pytz.timezone("America/Los_Angeles")
+        now_pacific = datetime.now(pacific_zone)
+        today_date = now_pacific.strftime("%Y-%m-%d")
+
+        try:
+            deleted_rides = []
+            batch = self.db.batch()
+
+            rides_query = (
+                self.ride_ref
+                .where("date", "<=", today_date)
+                .stream()
+            )
+
+            for ride_doc in rides_query:
+                ride_data = ride_doc.to_dict()
+                ride_id = ride_doc.id
+                ride_data["id"] = ride_id
+
+                ride_date = ride_data.get("date")
+                ride_time = ride_data.get("departureTime")
+
+                ride_datetime = datetime.strptime(f"{ride_date} {ride_time}", "%Y-%m-%d %I:%M %p")
+                ride_datetime = pacific_zone.localize(ride_datetime)
+
+                now_pacific = datetime.now(pacific_zone)
+
+                if ride_datetime < now_pacific:
+                    deleted_rides.append(ride_data)
+                    batch.delete(self.ride_ref.document(ride_id))
+
+            batch.commit()
+
+            return {
+                "deletedRides": deleted_rides
+            }, 200
+
+        except FirebaseError as e:
+            return {
+                "error": "Failed to delete past rides",
                 "details": str(e)
             }, 500
 

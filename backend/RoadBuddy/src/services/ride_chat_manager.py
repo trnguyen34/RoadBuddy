@@ -1,7 +1,6 @@
 import google.cloud
 from firebase_admin.exceptions import FirebaseError
 import pytz
-from datetime import datetime
 
 class RideChatManager:
     """

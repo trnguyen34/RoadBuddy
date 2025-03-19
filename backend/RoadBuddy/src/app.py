@@ -739,39 +739,36 @@ def delete_past_rides():
     """
     Deletes past rides from Firestore.
     """
-    try:
-        print("Checking for past rides...")
-        pacific_zone = pytz.timezone("America/Los_Angeles")
-        now_pacific = datetime.now(pacific_zone)
+    print("Checking for past rides...")
 
-        rides_ref = (
-            db.collection("rides")
-            .where("date", "<", now_pacific.strftime("%Y-%m-%d"))
-            .stream()
-        )
+    ride_manager = RideManager(db, None, None)
+    response = ride_manager.delete_past_rides()
 
-        for ride in rides_ref:
-            print("Deleting ", ride.id)
+    deleted_rides = response[0].get("deletedRides")
 
-            ride_id = ride.id
-            ride_data = ride.to_dict()
+    for ride in deleted_rides:
+        ride_id = ride.get("id")
+        owner_id = ride.get("ownerID")
+        owner_name = ride.get("ownerName")
+        passenger_ids = ride.get("currentPassengers")
 
-            ride_owner = ride_data.get("ownerID")
-            current_passengers = ride_data.get("currentPassengers", [])
+        print("Deleting ", ride_id)
 
-            remove_ride_from_user(db, ride_owner, ride_id, "ridesPosted")
+        owner_user_manager = UserManager(db, owner_id)
+        owner_user_manager.remove_posted_ride(ride_id)
 
-            for passenger_id in current_passengers:
-                print("deleting passenger:", passenger_id)
-                remove_ride_from_user(db, passenger_id, ride_id, "ridesJoined")
+        for passenger_id in passenger_ids:
+            passenger_user_manager = UserManager(db, passenger_id)
+            passenger_user_manager.remove_joined_ride(ride_id)
 
-            db.collection("rides").document(ride_id).delete()
+        chat_message_manager = ChatMessagesManager(db, ride_id, owner_id, owner_name)
+        chat_message_manager.delete_all_messages()
 
-    except Exception as e:
-        print(f"Error deleting past rides: {e}")
+        ride_chat_manager = RideChatManager(db, owner_id, owner_name)
+        ride_chat_manager.delete_ride_chat(ride_id)
 
 scheduler = BackgroundScheduler()
-scheduler.add_job(delete_past_rides, "interval", minutes=5)
+scheduler.add_job(delete_past_rides, "interval", minutes=10)
 scheduler.start()
 
 if __name__ == "__main__":
