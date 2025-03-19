@@ -1,4 +1,5 @@
 from firebase_admin.exceptions import FirebaseError
+from utils import handle_firestore_error, handle_generic_error
 
 class UserManager:
     """
@@ -44,16 +45,10 @@ class UserManager:
             }, 200
 
         except FirebaseError as e:
-            return {
-                "error": "Failed to fetch user rides.",
-                "details": str(e)
-            }, 500
+            return handle_firestore_error(e, "Failed to fetch user rides.")
 
         except Exception as e:
-            return {
-                "error": "An unexpected error occurred",
-                "details": str(e)
-            }, 500
+            return handle_generic_error(e, "An unexpected error occurred")
 
     def add_posted_ride(self, ride_id):
         """
@@ -78,16 +73,10 @@ class UserManager:
             }, 200
 
         except FirebaseError as e:
-            return {
-                "error": "Failed to add ride to user's posted rides",
-                "details": str(e)
-            }, 500
+            return handle_firestore_error(e, "Failed to add ride to user's posted rides")
 
         except Exception as e:
-            return {
-                "error": "An unexpected error occurred",
-                "details": str(e)
-            }, 500
+            return handle_generic_error(e, "An unexpected error occurred")
 
     def add_joined_ride(self, ride_id):
         """
@@ -112,16 +101,10 @@ class UserManager:
             }, 200
 
         except FirebaseError as e:
-            return {
-                "error": "Failed to add ride to user's joined rides",
-                "details": str(e)
-            }, 500
+            return handle_firestore_error(e, "Failed to add ride to user's joined rides")
 
         except Exception as e:
-            return {
-                "error": "An unexpected error occurred",
-                "details": str(e)
-            }, 500
+            return handle_generic_error(e, "An unexpected error occurred")
 
     def remove_joined_ride(self, ride_id):
         """
@@ -142,16 +125,10 @@ class UserManager:
             }, 200
 
         except FirebaseError as e:
-            return {
-                "error": "Failed to remove ride from user's joined rides",
-                "details": str(e)
-            }, 500
+            return handle_firestore_error(e, "Failed to remove ride from user's joined rides")
 
         except Exception as e:
-            return {
-                "error": "An unexpected error occurred",
-                "details": str(e)
-            }, 500
+            return handle_generic_error(e, "An unexpected error occurred")
 
     def remove_posted_ride(self, ride_id):
         """
@@ -172,16 +149,10 @@ class UserManager:
             }, 200
 
         except FirebaseError as e:
-            return {
-                "error": "Failed to remove ride from user's joined rides",
-                "details": str(e)
-            }, 500
+            return handle_firestore_error(e, "Failed to remove ride from user's joined rides")
 
         except Exception as e:
-            return {
-                "error": "An unexpected error occurred",
-                "details": str(e)
-            }, 500
+            return handle_generic_error(e, "An unexpected error occurred")
 
     def get_unread_notification_count(self):
         """
@@ -201,13 +172,7 @@ class UserManager:
             }, 200
 
         except FirebaseError as e:
-            return {
-                "error": "Failed to look up number of unread notifications",
-                "details": str(e)
-            }, 500
+            return handle_firestore_error(e, "Failed to look up number of unread notifications")
 
         except Exception as e:
-            return {
-                "error": "An unexpected error occurred",
-                "details": str(e)
-            }, 500
+            return handle_generic_error(e, "An unexpected error occurred")

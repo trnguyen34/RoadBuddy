@@ -1,5 +1,6 @@
 from flask import jsonify
 from firebase_admin.exceptions import FirebaseError
+from utils import handle_firestore_error, handle_generic_error
 
 class CarManager:
     """
@@ -43,16 +44,10 @@ class CarManager:
             }), 201
 
         except FirebaseError as e:
-            return jsonify({
-                "error": "Failed to add car. Please try again.",
-                "details": str(e)
-            }), 500
+            return handle_firestore_error(e, "Failed to add car. Please try again.")
 
         except Exception as e:
-            return jsonify({
-                "error": "An unexpected error occurred.",
-                "details": str(e)
-            }), 500
+            return handle_generic_error(e, "An unexpected error occurred")
 
     def is_duplicate_car(self, car_details):
         """
@@ -94,16 +89,10 @@ class CarManager:
             }, 200
 
         except FirebaseError as e:
-            return jsonify({
-                "error": "Failed to fetch added cars. Please try again.",
-                "details": str(e)
-            }), 500
+            return handle_firestore_error(e, "Failed to fetch added cars. Please try again.")
 
         except Exception as e:
-            return jsonify({
-                "error": "An unexpected error occurred.",
-                "details": str(e)
-            }), 500
+            return handle_generic_error(e, "An unexpected error occurred")
 
     @staticmethod
     def normalize_boolean(value):

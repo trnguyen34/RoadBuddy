@@ -1,4 +1,5 @@
 import stripe
+from utils import handle_generic_error
 
 stripe_keys = {
     "secret_key": (
@@ -66,7 +67,4 @@ class PaymentManager:
             }, 500
 
         except Exception as e:
-            return {
-                "error": "An unexpected error occurred.",
-                "details": str(e)
-            }, 500
+            return handle_generic_error(e, "An unexpected error occurred")

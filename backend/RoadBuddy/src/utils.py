@@ -7,6 +7,24 @@ from google.cloud.firestore import (
 from google.cloud import firestore
 from firebase_admin.exceptions import FirebaseError
 
+def handle_firestore_error(error, message="Firestore operation failed"):
+    """
+    Handles errors related to Firestore operations.
+    """
+    return {
+        "error": message,
+        "details": str(error)
+    }, 500
+
+def handle_generic_error(error, message="An unexpected error occurred"):
+    """
+    Handles generic exceptions not specific to Firestore.
+    """
+    return {
+        "error": message,
+        "details": str(error)
+    }, 500
+
 def is_duplicate_car(db, user_id, car_details):
     """
     Checks if a car with the same license plate or VIN already exists for a user.

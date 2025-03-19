@@ -1,6 +1,7 @@
 from datetime import datetime
 import pytz
 from firebase_admin.exceptions import FirebaseError
+from utils import handle_firestore_error, handle_generic_error
 
 class RideManager:
     """
@@ -50,16 +51,10 @@ class RideManager:
             }, 200
 
         except FirebaseError as e:
-            return {
-                "error": "Failed to fetch ride details.",
-                "details": str(e)
-            }, 500
+            return handle_firestore_error(e, "Failed to fetch ride details.")
 
         except Exception as e:
-            return {
-                "error": "An unexpected error occurred.",
-                "details": str(e)
-            }, 500
+            return handle_generic_error(e, "An unexpected error occurred")
 
     def get_rides_by_ids(self, ride_ids):
         """
@@ -81,16 +76,10 @@ class RideManager:
             }, 200
 
         except FirebaseError as e:
-            return {
-                "error": "Failed to fetch rides.",
-                "details": str(e)
-            }, 500
+            return handle_firestore_error(e, "Failed to fetch rides.")
 
         except Exception as e:
-            return {
-                "error": "An unexpected error occurred.",
-                "details": str(e)
-            }, 500
+            return handle_generic_error(e, "An unexpected error occurred")
 
     def post_ride(self, rides_posted, data):
         """
@@ -127,16 +116,10 @@ class RideManager:
             }, 201
 
         except FirebaseError as e:
-            return {
-                "error": "Failed to post ride, please try again.",
-                "details": str(e)
-            }, 500
+            return handle_firestore_error(e, "Failed to post ride, please try again.")
 
         except Exception as e:
-            return {
-                "error": "An unexpected error occurred.",
-                "details": str(e)
-            }, 500
+            return handle_generic_error(e, "An unexpected error occurred")
 
     def delete_ride(self, ride_id):
         """
@@ -164,16 +147,10 @@ class RideManager:
             }, 200
 
         except FirebaseError as e:
-            return {
-                "error": "Failed to delete ride. Please try again.",
-                "details": str(e)
-            }, 500
+            return handle_firestore_error(e, "Failed to delete ride. Please try again.")
 
         except Exception as e:
-            return {
-                "error": "An unexpected error occurred.",
-                "details": str(e)
-            }, 500
+            return handle_generic_error(e, "An unexpected error occurred")
 
     def add_passenger(self, ride_id):
         """
@@ -207,16 +184,10 @@ class RideManager:
             }, 200
 
         except FirebaseError as e:
-            return {
-                "error": "Failed to add user to this ride, please try again.",
-                "details": str(e)
-            }, 500
+            return handle_firestore_error(e, "Failed to add user to this ride, please try again.")
 
         except Exception as e:
-            return {
-                "error": "An unexpected error occurred.",
-                "details": str(e)
-            }, 500
+            return handle_generic_error(e, "An unexpected error occurred")
 
     def remove_passenger(self, ride_id):
         """
@@ -253,16 +224,10 @@ class RideManager:
             }, 200
 
         except FirebaseError as e:
-            return {
-                "error": "Failed to remove user from this ride, please try again.",
-                "details": str(e)
-            }, 500
+            return handle_firestore_error(e, "Failed to remove user from this ride, please try again.")
 
         except Exception as e:
-            return {
-                "error": "An unexpected error occurred.",
-                "details": str(e)
-            }, 500
+            return handle_generic_error(e, "An unexpected error occurred")
 
     def get_avaiable_rides(self, excluded_rides):
         """
@@ -296,16 +261,10 @@ class RideManager:
             }, 200
 
         except FirebaseError as e:
-            return {
-                "error": "Failed to fetch all available rides.",
-                "details": str(e)
-            }, 500
+            return handle_firestore_error(e, "Failed to fetch all available rides.")
 
         except Exception as e:
-            return {
-                "error": "An unexpected error occurred.",
-                "details": str(e)
-            }, 500
+            return handle_generic_error(e, "An unexpected error occurred")
 
     def delete_past_rides(self):
         """
@@ -347,13 +306,7 @@ class RideManager:
             }, 200
 
         except FirebaseError as e:
-            return {
-                "error": "Failed to delete past rides",
-                "details": str(e)
-            }, 500
+            return handle_firestore_error(e, "Failed to delete past rides")
 
         except Exception as e:
-            return {
-                "error": "An unexpected error occurred.",
-                "details": str(e)
-            }, 500
+            return handle_generic_error(e, "An unexpected error occurred")

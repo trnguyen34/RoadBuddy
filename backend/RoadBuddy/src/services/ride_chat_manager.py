@@ -1,6 +1,8 @@
 import google.cloud
 from firebase_admin.exceptions import FirebaseError
 import pytz
+from utils import handle_firestore_error, handle_generic_error
+
 
 class RideChatManager:
     """
@@ -44,16 +46,10 @@ class RideChatManager:
             }, 201
 
         except FirebaseError as e:
-            return {
-                "error": "Failed to create chat",
-                "details": str(e)
-            }, 500
+            return handle_firestore_error(e, "Failed to create chat")
 
         except Exception as e:
-            return {
-                "error": "An unexpected error occurred",
-                "details": str(e)
-            }, 500
+            return handle_generic_error(e, "An unexpected error occurred")
 
     def get_ride_chat_details(self, ride_id):
         """
@@ -78,16 +74,10 @@ class RideChatManager:
             }, 200
 
         except FirebaseError as e:
-            return {
-                "error": "Failed to fetch ride chat",
-                "details": str(e)
-            }, 500
+            return handle_firestore_error(e, "Failed to fetch ride chat")
 
         except Exception as e:
-            return {
-                "error": "An unexpected error occurred",
-                "details": str(e)
-            }, 500
+            return handle_generic_error(e, "An unexpected error occurred")
 
     def get_all_user_ride_chats(self, ride_chat_ids):
         """
@@ -123,16 +113,10 @@ class RideChatManager:
             return {"ride_chats": ride_chats}, 200
 
         except FirebaseError as e:
-            return {
-                "error": "Failed to fetch user ride chats.",
-                "details": str(e)
-            }, 500
+            return handle_firestore_error(e, "Failed to fetch user ride chats.")
 
         except Exception as e:
-            return {
-                "error": "An unexpected error occurred.",
-                "details": str(e)
-            }, 500
+            return handle_generic_error(e, "An unexpected error occurred")
 
     def delete_ride_chat(self, ride_id):
         """
@@ -147,16 +131,10 @@ class RideChatManager:
             }, 200
 
         except FirebaseError as e:
-            return {
-                "error": "Failed to create chat",
-                "details": str(e)
-            }, 500
+            return handle_firestore_error(e, "Failed to create chat")
 
         except Exception as e:
-            return {
-                "error": "An unexpected error occurred",
-                "details": str(e)
-            }, 500
+            return handle_generic_error(e, "An unexpected error occurred")
 
     def add_participant(self, ride_id):
         """
@@ -184,16 +162,10 @@ class RideChatManager:
             }, 200
 
         except FirebaseError as e:
-            return {
-                "error": "Failed to add user as a participant of this chat.",
-                "details": str(e)
-            }, 500
+            return handle_firestore_error(e, "Failed to add user as a participant of this chat.")
 
         except Exception as e:
-            return {
-                "error": "An unexpected error occurred",
-                "details": str(e)
-            }, 500
+            return handle_generic_error(e, "An unexpected error occurred")
 
     def remove_participant(self, ride_id):
         """
@@ -221,16 +193,10 @@ class RideChatManager:
             }, 200
 
         except FirebaseError as e:
-            return {
-                "error": "Failed to remove user as a participant of this chat.",
-                "details": str(e)
-            }, 500
+            return handle_firestore_error(e, "Failed to remove user as a participant of this chat.")
 
         except Exception as e:
-            return {
-                "error": "An unexpected error occurred",
-                "details": str(e)
-            }, 500
+            return handle_generic_error(e, "An unexpected error occurred")
 
     def update_last_message(self, ride_id, text, time):
         """
@@ -262,13 +228,7 @@ class RideChatManager:
             }, 200
 
         except FirebaseError as e:
-            return {
-                "error": "Failed to update ride chat.",
-                "details": str(e)
-            }, 500
+            return handle_firestore_error(e, "Failed to update ride chat.")
 
         except Exception as e:
-            return {
-                "error": "An unexpected error occurred.",
-                "details": str(e)
-            }, 500
+            return handle_generic_error(e, "An unexpected error occurred")

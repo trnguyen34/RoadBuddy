@@ -1,6 +1,7 @@
 from google.cloud import firestore
 from firebase_admin.exceptions import FirebaseError
 import pytz
+from utils import handle_firestore_error, handle_generic_error
 
 class ChatMessagesManager:
     """
@@ -39,16 +40,10 @@ class ChatMessagesManager:
             }, 201
 
         except FirebaseError as e:
-            return {
-                "error": "Failed to send message.",
-                "details": str(e)
-            }, 500
+            return handle_firestore_error(e, "Failed to send message.")
 
         except Exception as e:
-            return {
-                "error": "An unexpected error occurred.",
-                "details": str(e)
-            }, 500
+            return handle_generic_error(e, "An unexpected error occurred")
 
     def delete_all_messages(self):
         """
@@ -68,16 +63,10 @@ class ChatMessagesManager:
             }, 200
 
         except FirebaseError as e:
-            return {
-                "error": "Failed to delete messages.",
-                "details": str(e)
-            }, 500
+            return handle_firestore_error(e, "Failed to delete messages.")
 
         except Exception as e:
-            return {
-                "error": "An unexpected error occurred",
-                "details": str(e)
-            }, 500
+            return handle_generic_error(e, "An unexpected error occurred")
 
     def get_messages_sorted_by_timestamp_asc(self):
         """
@@ -105,13 +94,7 @@ class ChatMessagesManager:
             return {"messages": sorted_messages}, 200
 
         except FirebaseError as e:
-            return {
-                "error": "Failed to fetch messages.",
-                "details": str(e)
-            }, 500
+            return handle_firestore_error(e, "Failed to fetch messages.")
 
         except Exception as e:
-            return {
-                "error": "An unexpected error occurred",
-                "details": str(e)
-            }, 500
+            return handle_generic_error(e, "An unexpected error occurred")

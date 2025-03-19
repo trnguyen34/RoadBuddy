@@ -5,6 +5,7 @@ import google.cloud
 import pytz
 from firebase_admin.exceptions import FirebaseError
 from google.cloud import firestore
+from utils import handle_firestore_error, handle_generic_error
 
 class NotificationManager:
     """
@@ -38,16 +39,10 @@ class NotificationManager:
             return {"message": "Notification stored successfully"}, 201
 
         except FirebaseError as e:
-            return {
-                "error": "Failed to store notification",
-                "details": str(e)
-            }, 500
+            return handle_firestore_error(e, "Failed to store notification")
 
         except Exception as e:
-            return {
-                "error": "An unexpected error occurred",
-                "details": str(e)
-            }, 500
+            return handle_generic_error(e, "An unexpected error occurred")
 
     def store_notification_for_users(self, user_ids, ride_id, message):
         """
@@ -83,16 +78,10 @@ class NotificationManager:
             }, 200
 
         except FirebaseError as e:
-            return {
-                "error": "Failed to store notification",
-                "details": str(e)
-            }, 500
+            return handle_firestore_error(e, "Failed to store notification")
 
         except Exception as e:
-            return {
-                "error": "An unexpected error occurred",
-                "details": str(e)
-            }, 500
+            return handle_generic_error(e, "An unexpected error occurred")
 
     def get_all_notifications_for_user(self, user_id):
         """
@@ -140,13 +129,7 @@ class NotificationManager:
             return {"notifications": notifications_list}, 200
 
         except FirebaseError as e:
-            return {
-                "error": "Failed to fetch user notifications.",
-                "details": str(e)
-            }, 500
+            return handle_firestore_error(e, "Failed to fetch user notifications.")
 
         except Exception as e:
-            return {
-                "error": "An unexpected error occurred",
-                "details": str(e)
-            }, 500
+            return handle_generic_error(e, "An unexpected error occurred")
