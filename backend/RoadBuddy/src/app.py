@@ -16,10 +16,7 @@ from firebase_admin.exceptions import FirebaseError
 from flask_cors import CORS
 from apscheduler.schedulers.background import BackgroundScheduler
 from utils import (
-    is_duplicate_car, is_duplicate_ride, print_json, check_required_fields,
-    remove_ride_from_user, remove_user_from_ride_passenger, add_user_to_ride_passenger,
-    get_document_from_db, store_notification, add_user_ride_chat, remove_participant_from_ride_chat,
-    get_sorted_messages, get_sorted_ride_chats
+    print_json, check_required_fields,
 )
 from services.car_manager import CarManager
 from services.chat_messages_manager import ChatMessagesManager
