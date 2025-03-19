@@ -1,5 +1,5 @@
-import pytz
 from datetime import datetime
+import pytz
 from firebase_admin.exceptions import FirebaseError
 
 class RideManager:
@@ -329,9 +329,7 @@ class RideManager:
                 ride_datetime = datetime.strptime(f"{ride_date} {ride_time}", "%Y-%m-%d %I:%M %p")
                 ride_datetime = pacific_zone.localize(ride_datetime)
 
-                now_pacific = datetime.now(pacific_zone)
-
-                if ride_datetime < now_pacific:
+                if ride_datetime < datetime.now(pacific_zone):
                     deleted_rides.append(ride_data)
                     batch.delete(self.ride_ref.document(ride_id))
 
