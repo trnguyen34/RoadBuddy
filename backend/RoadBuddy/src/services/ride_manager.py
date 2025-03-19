@@ -268,6 +268,7 @@ class RideManager:
         """
         Fetch all available rides with status 'open', excluding rides the user has joined or posted.
         """
+        pacific_zone = pytz.timezone("America/Los_Angeles")
         try:
             available_rides_query = (
                 self.ride_ref
@@ -280,9 +281,15 @@ class RideManager:
                 ride_data = ride_doc.to_dict()
                 ride_id = ride_doc.id
 
-                if ride_id not in excluded_rides:
-                    ride_data["id"] = ride_id
-                    available_rides.append(ride_data)
+                ride_date = ride_data["date"]
+                ride_time = ride_data["departureTime"]
+                ride_datetime = datetime.strptime(f"{ride_date} {ride_time}", "%Y-%m-%d %I:%M %p")
+                ride_datetime = pacific_zone.localize(ride_datetime)
+
+                if ride_datetime >= datetime.now(pacific_zone):
+                    if ride_id not in excluded_rides:
+                        ride_data["id"] = ride_id
+                        available_rides.append(ride_data)
 
             return {
                 "rides": available_rides
