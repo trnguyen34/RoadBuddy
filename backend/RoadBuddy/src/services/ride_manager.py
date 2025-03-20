@@ -224,7 +224,7 @@ class RideManager:
             }, 200
 
         except FirebaseError as e:
-            return handle_firestore_error(e, "Failed to remove user from this ride, please try again.")
+            return handle_firestore_error(e, "Failed to remove user from this ride.")
 
         except Exception as e:
             return handle_generic_error(e, "An unexpected error occurred")
