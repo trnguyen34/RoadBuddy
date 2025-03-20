@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import { 
   View,
   Text,
@@ -9,7 +9,6 @@ import {
   KeyboardAvoidingView,
   Platform,
   Keyboard,
-  TouchableWithoutFeedback,
 } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import { useNavigation, useLocalSearchParams } from "expo-router";
@@ -34,6 +33,7 @@ const MessagingScreen = () => {
   const [currentUserId, setCurrentUserId] = useState<string>("");
   const [loading, setLoading] = useState(true);
   const navigation = useNavigation();
+  const flatListRef = useRef<FlatList>(null);
 
   useEffect(() => {
     const fetchUserId = async () => {
@@ -42,7 +42,6 @@ const MessagingScreen = () => {
         setCurrentUserId(response.data.userId);
       } catch (err) {
         console.error("Failed to fetch user ID", err);
-        setError("Failed to load user ID.");
       }
     };
     fetchUserId();
@@ -104,12 +103,11 @@ const MessagingScreen = () => {
     }
   };
   
-return (
-  <KeyboardAvoidingView
-    behavior={Platform.OS === "ios" ? "padding" : "height"}
-    style={{ flex: 1 }}
-  >
-    <TouchableWithoutFeedback onPress={Keyboard.dismiss}>
+  return (
+    <KeyboardAvoidingView
+      behavior={Platform.OS === "ios" ? "padding" : "height"}
+      style={{ flex: 1 }}
+    >
       <View style={styles.container}>
         {/* Back Button */}
         <TouchableOpacity style={styles.backButton} onPress={() => navigation.goBack()}>
@@ -120,13 +118,15 @@ return (
 
         {/* Chat Messages */}
         <FlatList
+          ref={flatListRef}
           data={messages}
           keyExtractor={(item) => item.id}
+          keyboardShouldPersistTaps="handled"
           renderItem={({ item }) => (
             <View style={styles.messageWrapper}>
-              {/* Only show sender name if it's NOT the current user */}
-              {item.senderId !== currentUserId && <Text style={styles.senderName}>{item.senderName}</Text>}
-          
+              {item.senderId !== currentUserId && (
+                <Text style={styles.senderName}>{item.senderName}</Text>
+              )}
               <View style={[styles.messageContainer, item.senderId === currentUserId ? styles.sender : styles.receiver]}>
                 <Text style={styles.messageText}>{item.text}</Text>
                 <Text style={styles.timestamp}>{item.timestamp}</Text>
@@ -134,11 +134,13 @@ return (
             </View>
           )}
           contentContainerStyle={styles.chatContainer}
+          onContentSizeChange={() => flatListRef.current?.scrollToEnd({ animated: true })}
         />
 
         {/* Input Field & Send Button */}
         <View style={styles.inputContainer}>
           <TextInput
+            autoFocus
             style={styles.input}
             placeholder="Type a message..."
             value={text}
@@ -150,9 +152,8 @@ return (
           </TouchableOpacity>
         </View>
       </View>
-    </TouchableWithoutFeedback>
-  </KeyboardAvoidingView>
-);
+    </KeyboardAvoidingView>
+  );
 };
 
 const styles = StyleSheet.create({
@@ -188,25 +189,25 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: "#F6F1E9",
     padding: 16,
-    paddingTop: 50
+    paddingTop: 50,
   },
   header: {
-  fontSize: 24,
-  fontWeight: "bold",
-  textAlign: "center",
-  marginTop: 20,
-  marginBottom: 16,
-  color: "#4D4036"
+    fontSize: 24,
+    fontWeight: "bold",
+    textAlign: "center",
+    marginTop: 20,
+    marginBottom: 16,
+    color: "#4D4036",
   },
   backButton: {
     position: "absolute",
     left: 30,
     top: 75,
-    zIndex: 1
+    zIndex: 1,
   },
   chatContainer: {
     flexGrow: 1,
-    paddingBottom: 10
+    paddingBottom: 10,
   },
   inputContainer: {
     flexDirection: "row",
@@ -219,18 +220,18 @@ const styles = StyleSheet.create({
     shadowColor: "#000",
     shadowOpacity: 0.1,
     shadowRadius: 5,
-    elevation: 2
+    elevation: 2,
   },
   input: {
     flex: 1,
     fontSize: 16,
-    color: "#4D4036"
+    color: "#4D4036",
   },
   sendButton: {
     backgroundColor: "#A3A380",
     padding: 10,
     borderRadius: 20,
-    marginLeft: 10
+    marginLeft: 10,
   },
   timestamp: {
     fontSize: 10,

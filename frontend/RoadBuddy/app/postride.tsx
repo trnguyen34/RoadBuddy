@@ -167,7 +167,7 @@ export default function PostRide() {
     try {
       const payload = {
         car_select: formatCar(selectedCar),
-        licebse_plate: selectedCar.licensePlate,
+        license_plate: selectedCar.licensePlate,
         from: fromAddress,
         to: toAddress,
         date: dateText,

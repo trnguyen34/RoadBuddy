@@ -36,4 +36,4 @@ jobs:
 
     - name: Analysing the code with pylint
       run: |
-        python -m pylint $(git ls-files 'backend/*.py') --disable=C0114 --disable=broad-except --disable=too-many-return-statements --disable=too-many-locals --disable=too-many-branches --disable=too-many-lines
+        python -m pylint $(git ls-files 'backend/*.py') --disable=C0114 --disable=broad-except --disable=too-many-return-statements --disable=too-many-locals --disable=too-few-public-methods
