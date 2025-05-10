@@ -14,7 +14,7 @@ import { router } from 'expo-router';
 import { BASE_URL } from '../configs/base-url';
 
 const STRIPE_PUBLISHABLE_KEY =
-  'pk_test_51MjBbNDiM3EAos9ocETiK2jsHzePLkUvL95YrsEwpCgThRFn4EI0eFyNl55l7jsJzEHoHbGXOyfDm9HYTLKLsKHw00jukt7PIy';
+  '...';
 
 function RequestRideScreen() {
   const { initPaymentSheet, presentPaymentSheet } = useStripe();
