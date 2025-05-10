@@ -20,7 +20,7 @@ import { googlePlaceApi } from "../configs/google-api";
 import { Ionicons } from "@expo/vector-icons";
 
 const STRIPE_PUBLISHABLE_KEY =
-  "pk_test_51MjBbNDiM3EAos9ocETiK2jsHzePLkUvL95YrsEwpCgThRFn4EI0eFyNl55l7jsJzEHoHbGXOyfDm9HYTLKLsKHw00jukt7PIy";
+  "...";
 
 interface Ride {
   id: string;
